@@ -1,0 +1,31 @@
+#!/bin/bash 
+
+source testScripts/preamble
+ant junitloops_vex &> $tempfile  &
+
+sleep $sleepingtime
+
+if [ `ps aux | grep JUnitPerf | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep JUnitPerf | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+
+		res=`cat $tempfile | grep testNormal | perl -lne 'print $1 if / ([0-9]*) ms/'`
+		if [ $res -lt 120 ];then
+			echo "Success"
+			success=1
+		else
+			echo "Failure"
+		fi
+	fi
+
+fi
+
+
+if [ -z "$success" ];then
+echo "ant junitloops_vex"
+fi

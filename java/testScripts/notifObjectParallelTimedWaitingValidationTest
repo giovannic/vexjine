@@ -1,0 +1,39 @@
+#!/bin/bash 
+
+source testScripts/preamble
+
+java $parameters -cp bin vtf_tests.MonitorTest 7 &> $tempfile &
+
+res=6.50
+correct_seconds_passed=7
+
+sleep $shortsleeping
+
+if [ `ps aux | grep MonitorTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep MonitorTest | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+		seconds_passed=`cat $tempfile | grep "second passed" | wc -l`
+		if [ $seconds_passed -eq $correct_seconds_passed ];then
+			success=`cat $tempfile | tail -1 | awk '{err=($1 - '$res')/'$res'; if (err > 0.1 || err < -0.1) print 0; else print 1;}'`
+			if [ $success -eq 1 ];then
+				echo "Success"
+			else
+				echo "Failure"
+			fi
+		else
+			echo "Failure - $seconds_passed sec passed insted of $correct_seconds_passed"
+		fi
+	fi
+
+fi
+
+
+if [ -z "$success" ];then
+echo "java $parameters -cp bin vtf_tests.MonitorTest 7"
+fi
+

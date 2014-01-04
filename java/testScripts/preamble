@@ -1,0 +1,23 @@
+#!/bin/bash
+parameters="-Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=adaptiveProfiling=10000 -agentpath:lib/libJVMTIAgent.so=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01"
+#parameters="-Xbootclasspath/p:/homes/nb605/VTF/java/vtf.jar -javaagent:/homes/nb605/VTF/java/vtfTester/libs/instrument.jar=adaptiveProfiling=10000 -agentpath:/homes/nb605/VTF/java/lib/libJVMTIAgentpapi.so=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01"
+
+if [ -n "$1" ];then
+parameters="$parameters,$1"
+fi
+
+if [[ "$1" =~ .*cpus=[2-9].* ]];then
+	multicorevex=1
+fi
+
+tempfile=./testScripts/_temp
+if [ -f "$tempfile" ];then
+rm $tempfile
+fi
+
+shortsleeping=4
+middlesleeping=7
+longsleeping=10
+sleepingtime=13
+
+parkingthreads=4

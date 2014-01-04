@@ -1,0 +1,374 @@
+/*
+ * MethodEventsBehaviour.cpp
+ *
+ *  Created on: 18 Oct 2011
+ *      Author: root
+ */
+
+#include "MethodEventsBehaviour.h"
+#include "ThreadManager.h"
+
+template <typename LockType>
+MethodEventsBehaviour<LockType>::MethodEventsBehaviour(ThreadManagerRegistry *_managers, EventLogger *_eventLogger, IoSimulator *_ioSimulator, ThreadEventsBehaviour<LockType> *_threadEventsBehaviour, const bool &_modelSchedulerSim, const bool &_reportIoMethods) {
+	managers = _managers;
+	eventLogger = _eventLogger;
+	threadEventsBehaviour = _threadEventsBehaviour;
+	ioSimulator = _ioSimulator;
+	invalidationPolicy = NULL;
+	modelSchedulerSim = _modelSchedulerSim;
+	reportIoMethods = _reportIoMethods;
+
+}
+
+MethodEventsBehaviour::~MethodEventsBehaviour() {
+
+}
+
+
+/****************************************
+ * afterMethodEntry - returns if method is recursive
+ ****************************************/
+bool MethodEventsBehaviour::afterMethodEntry(const int & methodId) {
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state == NULL) {
+		return false;
+	}
+
+	long long startingTime = state->getThreadTimeBeforeMethodInstrumentation();
+	if (threadEventsBehaviour->ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+		state->updateThreadLocalTimeSinceLastResumeTo(startingTime);	// otherwise time is updated in suspend
+	}
+
+	assert(state->getThreadCurrentlyControllingManager() != NULL);
+	state->onEntry(methodId);
+	bool isMethodRecursive = eventLogger->logMethodEntry(state, methodId, newTimeScalingApplied(state, methodId));
+
+	//		VISUALIZE_METHOD_EVENT(METHOD_ENTER, state, methodId);
+
+	state->onVexExit();
+	return isMethodRecursive;
+}
+
+
+/***************************************
+ * beforeMethodExit- returns if method should be invalidated
+ ****************************************/
+bool MethodEventsBehaviour::beforeMethodExit(const int & methodId) {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state == NULL) {
+		return NULL;
+	}
+
+	long long startingTime = state->getThreadTimeBeforeMethodInstrumentation();
+	if (threadEventsBehaviour->ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+		state->updateThreadLocalTimeSinceLastResumeTo(startingTime);	//otherwise time updated internally in suspend
+	}
+
+	cleanupTimeScalingOfThisMethod(state);
+
+	state->onExit(methodId);
+	state->updateExitingMethodInfo(methodId);
+
+	PerformanceMeasure *methodLog = eventLogger->logMethodExit(state);
+
+	//		VISUALIZE_METHOD_EVENT(METHOD_EXIT, state, methodId);
+
+	bool shouldMethodBeInvalidated = (invalidationPolicy != NULL && !invalidationPolicy->keepOnProfiling(methodLog));
+
+	state->onVexExit();
+	return shouldMethodBeInvalidated;
+}
+
+
+
+
+/****************************************
+ * afterIoMethodEntry
+ ****************************************/
+void MethodEventsBehaviour::afterIoMethodEntry(const int &methodId, const int &invocationPointHashValue, const bool &possiblyBlocking) {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+
+	if (state == NULL || state->invalidIoInvocationPoint(invocationPointHashValue))  {
+		return;
+	}
+	long long startingTime = state->getThreadTimeBeforeIoMethodInstrumentation();
+	if (threadEventsBehaviour->ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+		state->updateThreadLocalTimeSinceLastResumeTo(startingTime);	//otherwise time updated internally in suspend
+	}
+
+	state->onIoEntry(possiblyBlocking);
+	// Temp solution to update times and suspend before I/O
+	state->setLastCPUTime(startingTime);
+
+	//		managers->setCurrentThreadVT(startingTime, state);
+
+	beforeExecutingVirtualIO(methodId, invocationPointHashValue, state);
+
+
+}
+
+
+
+/****************************************
+ * beforeIoMethodExit
+ ****************************************/
+void MethodEventsBehaviour::beforeIoMethodExit(const int & methodId) {
+
+	// No lost time here: using start/end approach
+
+	// Used to account for real time of IO operation - realTimeValueOnExit difference from state->getLastRealTime()
+	long long realTimeValueOnExit  = Time::getRealTimeBeforeMethodInstrumentation();
+
+	// Get state of current thread
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state == NULL || state->invalidIoInvocationPoint()) {
+		return;
+	}
+
+	long long startingTime = state->getThreadTimeBeforeIoMethodInstrumentation();		// a bit inexact
+	if (state->isIgnoringIo()) {
+		state->updateThreadLocalTimeSinceLastResumeTo(startingTime);
+//cout << eventLogger->getMethodName(methodId) << " " << (startingTime - state->getLastCPUTime()) << " vs real " << (realTimeValueOnExit-state->getLastRealTime()) << endl;
+	}
+
+
+	state->updateIoCPUTimeTo(startingTime);
+
+	state->setIoFinishedBeforeLogging(true);	// used to avoid invalidating the I/O in real time
+
+
+	//vtflog(agentDebug & mypow2(1), logFile, "beforeIoMethodExit: %s exited %d from point %d %lld (%lld)\n", state->getName(), methodId, state->getIoInvocationPointHashValue()*state->getStackTraceHash(), virtualTimelineController->getGlobalTime(), Time::getVirtualTime());
+	state->addVtfInvocationPoint();	// used to avoid declaring threads NATIVE_WAITING if they mainly waited for acquisition of the managers->mutex lock
+
+
+
+	// Only add time to measurements if I/O operation was valid
+//	(*(threadEventsBehaviour->getCurrentlyControllingManagerOf(state)))->onThreadIoEnd(realTimeValueOnExit, state, methodId);
+	ioSimulator->endIo(state, realTimeValueOnExit);
+
+	// Only one exiting call info - no need to malloc/free each time
+	state->updateExitingMethodInfo(methodId);
+
+	// Opt-out method reporting with the no_io_reporting agent flag
+	PerformanceMeasure *methodLog = NULL;
+	if (reportIoMethods) {
+		methodLog = eventLogger->logMethodExit(state); // Note: do not lock scheduler here
+	}
+
+	//		VISUALIZE_METHOD_EVENT(METHOD_IO_EXIT, state, methodId);
+
+	state -> setCpuTimeClockAfterIo();	// next update will be based back again on CPU time
+}
+
+
+
+/****************************************
+ * Called by all I/O methods before issuing I/O
+ ****************************************/
+void MethodEventsBehaviour::beforeExecutingVirtualIO(const int &methodId, const int &invocationPointHashValue, ThreadState *state) {
+
+	// push it to thread stack
+	if (reportIoMethods) {
+		eventLogger->logMethodEntry(state, methodId, false);
+	}
+
+	//		VISUALIZE_METHOD_EVENT(METHOD_IO_ENTER, state, methodId);
+
+	state->setIoInvocationPointHashValue(invocationPointHashValue);
+
+	//		if (printIoPredictionError || printIoBuffers) {
+	//			ioSimulator->registerInvocationPoint(invocationPointHashValue*state->getStackTraceHash(), methodId, state->getCurrentStackTrace());
+	//		}
+
+	//	(*(threadEventsBehaviour->getCurrentlyControllingManagerOf(state)))->onThreadIoStart(state);
+	ioSimulator->startIo(state);
+
+}
+
+
+
+/****************************************
+ * Called by methods whose performance is a result of model simulation
+ * but the functional behaviour is a result of code execution
+ *****************************************/
+long long MethodEventsBehaviour::afterMethodEntryUsingPerformanceModel(const int &methodId) {
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state == NULL) {
+		return 0;
+	}
+
+	long long startingTime = state->getThreadTimeBeforeMethodInstrumentation();
+	if (threadEventsBehaviour->ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+		state->updateThreadLocalTimeSinceLastResumeTo(startingTime);	//otherwise time updated internally in suspend
+	}
+
+	state->onEntry(methodId);
+	eventLogger->logMethodEntry(state, methodId, false);
+
+	//		VISUALIZE_METHOD_EVENT(METHOD_ENTER, state, methodId);
+	//cout << "Simulation starting at " << state->getEstimatedRealTime() << endl;
+
+	unordered_map<int,  pair<MethodPerformanceModelMetadata *, MethodPerformanceModel *> >::iterator methodModelsIt = methodPerfomanceModels.find(methodId);
+	assert(methodModelsIt != methodPerfomanceModels.end());
+
+	MethodPerformanceModelMetadata *performanceModelMethodMetadata = methodModelsIt->second.first;
+	MethodPerformanceModel *methodPerformanceModel = methodModelsIt->second.second;
+	methodPerformanceModel->simulate(state, performanceModelMethodMetadata);
+
+	state->onVexExitWithoutTimeUpdate();
+	// From this point on the thread state is in the runnables list and will not be suspend/resumed until the model
+	return state->getEstimatedRealTime();
+}
+
+void MethodEventsBehaviour::beforeMethodExitUsingPerformanceModel(const int &methodId) {
+
+	ThreadState *state = ThreadState::forceGetCurrentThreadState();
+	if (state == NULL) {
+		return;
+	}
+
+	state->onVexEntry();
+	if (modelSchedulerSim) {
+		// Synchronize with the scheduler simulating the model
+		state->blockUntilModelSimulationEnd();
+	}
+	state->endModelSimulation();
+
+	state->onExit(methodId);
+
+	state->updateExitingMethodInfo(methodId);
+
+	eventLogger->logMethodExit(state);
+
+	//		VISUALIZE_METHOD_EVENT(METHOD_EXIT, state, methodId);
+	state->updateCpuTimeClock();
+	state->lockShareResourceAccessKey();
+	ThreadManager *currentManager = state->getThreadCurrentlyControllingManager();
+	if (currentManager == NULL) {
+		state->getAndResetLocalTime();
+		managers->getDefaultManager()->suspendLooseCurrentThread(state, 0);
+	} else {
+		currentManager->suspendModelSimulationFinishingThread(state);
+	}
+	state->unlockShareResourceAccessKey();
+
+	/*
+	ThreadManager *currentManager = state->getThreadCurrentlyControllingManager();
+	state->updateCpuTimeClock();
+
+	if (currentManager == NULL) {
+		state->getAndResetLocalTime();
+		//			cout << "after endModelSimulation " << state->getName() << " " << (state->getEstimatedRealTime() - startingTime) << " " << state->getLocalTime() << " LOOSE " << endl;
+	//	manager->suspendLooseCurrentThread(state, 0);
+//		managers->getDefaultManager()->suspendCurrentThread(state, 0, ThreadManager::SUSPEND_OPT_EXTERNALLY_LOCKED | ThreadManager::SUSPEND_OPT_FORCE_SUSPEND | ThreadManager::SUSPEND_OPT_DONT_WAKE_UP_SCHEDULER);
+
+	} else {
+		//			cout << "after endModelSimulation " << state->getName() << " " << (state->getEstimatedRealTime() - startingTime) << " " << state->getLocalTime() << " lastat: " << state->getResumedLastAt() << " normal suspend" << endl;
+//		currentManager -> suspendModelSimulationFinishingThread(state);
+	}
+	 */
+
+	assert(ThreadState::forceGetCurrentThreadState() != NULL && ThreadState::getCurrentThreadState() != NULL);
+	state->onVexExit();
+
+}
+
+bool MethodEventsBehaviour::newTimeScalingApplied(ThreadState *state, const int &methodId) {
+
+	// Change accelerator factor, only if it was previously unset, and right after logging time without any virtual factor
+	if (state->getTimeScalingFactor() == 1) {
+		unordered_map<int, float>::iterator method_time_override_this_method = methodTimeScalingFactors.find(methodId);
+
+		if (method_time_override_this_method != methodTimeScalingFactors.end()) {
+			//TODO: IMPROVEMENT:refactor
+			state->lockShareResourceAccessKey();
+			assert(state->getThreadCurrentlyControllingManager() != NULL);
+			state->getThreadCurrentlyControllingManager()->notifySchedulerForVirtualizedTime(state, method_time_override_this_method->second);
+			state->unlockShareResourceAccessKey();
+			return true;
+		}
+	}
+	return false;
+}
+
+
+void MethodEventsBehaviour::cleanupTimeScalingOfThisMethod(ThreadState *state) {
+	if (state->getCurrentMethodInfo() != NULL) {
+		if (state->getCurrentMethodInfo()->getShouldResetVTFactor()) {
+			//TODO: IMPROVEMENT: refactor
+			state->lockShareResourceAccessKey();
+			state->getThreadCurrentlyControllingManager()->notifySchedulerForVirtualizedTime(state, 1.0);
+			state->unlockShareResourceAccessKey();
+		}
+	}
+}
+
+
+
+
+
+void MethodEventsBehaviour::registerInvalidationPolicy(const char *invalidationPolicyInfo, VirtualTimeline *virtualTimeline) {
+	size_t ilength = strlen(invalidationPolicyInfo);
+	size_t delimiterPosition = ilength;
+	for (size_t i=0; i<ilength; i++) {
+		if (invalidationPolicyInfo[i] == ':') {
+			delimiterPosition = i;
+			break;
+		}
+	}
+
+	if (delimiterPosition != ilength) {
+		char samplesLimit[32];
+		char *secondInfo = (char *)&invalidationPolicyInfo[delimiterPosition+1];
+		strncpy(samplesLimit, invalidationPolicyInfo, delimiterPosition);
+
+		long long minimumProfiledTime = atoi(secondInfo);
+		if (minimumProfiledTime == 0) {
+			invalidationPolicy = new RelativePercentageProfilingInvalidationPolicy(atoi(samplesLimit), atof(secondInfo), virtualTimeline);
+		} else {
+			invalidationPolicy = new AbsoluteTimeProfilingInvalidationPolicy(atoi(samplesLimit), minimumProfiledTime);
+		}
+
+	} else {
+		invalidationPolicy = new ProfilingInvalidationPolicy(atoi(invalidationPolicyInfo));
+	}
+}
+
+
+
+
+void MethodEventsBehaviour::registerMethodPerformanceModel(const int &methodId, const char *modelFilename, const char *sourceNodeLabel, const int &customerClass) {
+
+	if (modelFilename != NULL) {
+
+		unordered_map<int, pair<MethodPerformanceModelMetadata *, MethodPerformanceModel *> >::iterator methodModelsIt = methodPerfomanceModels.find(methodId);
+		if (methodModelsIt == methodPerfomanceModels.end()) {
+			std::string modelFilenameString(modelFilename);
+			MethodPerformanceModel *performanceModel = NULL;
+			unordered_map<std::string, MethodPerformanceModel *>::iterator modelFilenameIt = modelFilenamesToPerfomanceModels.find(modelFilenameString);
+			if (modelFilenameIt == modelFilenamesToPerfomanceModels.end()) {
+	//			cout << "-----------------------------------------\nNew model from file: " << modelFilename << endl;
+				performanceModel = new MethodPerformanceModel(modelFilename, modelSchedulerSim);
+	//			cout << "-----------------------------------------" << endl << endl;
+				modelFilenamesToPerfomanceModels[modelFilenameString] = performanceModel;
+			} else {
+				performanceModel = modelFilenameIt->second;
+
+			}
+
+//			cout << methodId << " methodId has model: " << modelFilename << ": customerClass " << customerClass << " and node " <<   performanceModel->getSourceNodeWithLabel(sourceNodeLabel)->getName() << endl;
+			MethodPerformanceModelMetadata *metadataForInvocationFromThisMethod = new MethodPerformanceModelMetadata(performanceModel->getSourceNodeWithLabel(sourceNodeLabel), customerClass);
+			methodPerfomanceModels[methodId] = make_pair(metadataForInvocationFromThisMethod, performanceModel);
+		}
+
+	}
+}
+
+
+void MethodEventsBehaviour::registerMethodTimeScalingFactor(const int &methodId, const double &speedup) {
+	methodTimeScalingFactors[methodId] = (float)speedup;
+}
+
+

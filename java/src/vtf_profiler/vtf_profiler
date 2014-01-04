@@ -1,0 +1,66 @@
+#!/bin/bash
+
+#cp ../Makefile ../Makefile.real
+#cp ../Makefile_profiler ../Makefile
+#./do
+#mv ../Makefile.real ../Makefile
+
+if [ "$ARCH" == "i386" ];then
+  suffix="_x86"
+fi
+
+#rm /data/vtf_delays
+
+iteration=0
+
+# One for mixed mode, one for interpreted
+while [ $iteration -le 1 ] ;do
+
+sum1=0
+sum2=0
+
+#JAVA_EXEC=java
+JAVA_EXEC=ijava
+
+
+j=0
+i=1000000
+
+while [ $i -le 64000000 ];do
+nooverhead=`$JAVA_EXEC $xint -cp bin -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=-profilingRun:vtf_base_methodfile -agentpath:lib/libJVMTIAgent$suffix.so vtf_profiler.HostProfiler $i methods`
+overhead=`$JAVA_EXEC $xint -cp bin -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=-profilingRun -agentpath:lib/libJVMTIAgent$suffix.so=-delays_file:/data/vtf_delays, vtf_profiler.HostProfiler $i methods`
+
+diff=`echo "scale=1; $overhead - $nooverhead " | bc`
+result1=`echo "scale=5; $diff / $i " | bc | tr "\." "\n" | head -1`
+
+echo -n $result1
+
+nooverhead=`$JAVA_EXEC $xint -cp bin -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=-profilingRun:vtf_base_methodfile -agentpath:lib/libJVMTIAgent$suffix.so vtf_profiler.HostProfiler $i sync`
+overhead=`$JAVA_EXEC $xint -cp bin -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=-profilingRun -agentpath:lib/libJVMTIAgent$suffix.so=-delays_file:/data/vtf_delays, vtf_profiler.HostProfiler $i sync`
+
+diff=`echo "scale=1; $overhead - $nooverhead " | bc`
+result2=`echo "scale=5; $diff / $i " | bc | tr "\." "\n" | head -1`
+
+#overhead=`cat /data/vtf_results.csv | grep Loops | perl -lne 'print $1 if /([0-9|\.]*),VT RE/'`
+#echo $nooverhead,$overhead,$diff,$result2 
+
+echo " $result2"
+
+sum1=$((sum1+result1))
+sum2=$((sum2+result2))
+
+i=$((i*2))
+j=$((j+1))
+
+done
+
+avg1=`echo "scale=5; $sum1 / $j " | bc | tr "\." "\n" | head -1`
+avg2=`echo "scale=5; $sum2 / $j " | bc | tr "\." "\n" | head -1`
+
+echo $avg1 >> /data/vtf_delays
+echo $avg2 >> /data/vtf_delays
+
+
+iteration=$((iteration+1))
+xint="-Xint"
+done

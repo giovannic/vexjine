@@ -1,0 +1,245 @@
+/*
+ * LockRegistry.cpp
+ *
+ *  Created on: 21 Nov 2011
+ *      Author: root
+ */
+
+#include "LockRegistry.h"
+#include "ThreadState.h"
+/*
+ * Class used to store which locks have their monitors being waited on.
+ * This is used for Java threads simulation
+ */
+
+#include <iostream>
+using namespace std;
+
+bool LockRegistryInfo::releaseMonitor() {
+	monitorLocked = false;
+	return true;
+}
+
+void LockRegistryInfo::print() {
+
+	vector<ThreadState *>::iterator i = threadsContendedOnLock->begin();
+	cout << "Mutex locked? " << monitorLocked << endl;
+	while (i != threadsContendedOnLock->end()) {
+		cout << "\t" << (*i)->getName() << " (" << (*i)->getId() << ")" << endl;
+		++i;
+	}
+}
+
+
+bool ReentrantLockRegistryInfo::releaseMonitor() {
+	if (--counter == 0) {
+		monitorLocked = false;
+		owner = NULL;
+//		cout << "-----" << " counter " << counter << endl;
+		return true;
+	} else {
+//		cout << "-----" << " counter " << counter << endl;
+		return false;
+	}
+}
+
+void ReentrantLockRegistryInfo::print() {
+
+	vector<ThreadState *>::iterator i = threadsContendedOnLock->begin();
+	cout << "Mutex locked? " << monitorLocked << " " << counter << " times";
+	if (owner != NULL) {
+		cout << " by " << owner->getName() << " " << owner->getId();
+	}
+	cout << endl;
+	while (i != threadsContendedOnLock->end()) {
+		cout << "\t" << (*i)->getName() << " (" << (*i)->getId() << ")" << endl;
+		++i;
+	}
+}
+
+
+
+
+bool LockRegistry::tryAcquiringLock(ThreadState *state, const int &lockId) {
+	return registry -> tryAcquiringLock(state, lockId);
+}
+
+
+
+template <typename T>
+InnerLockRegistry::InnerLockRegistry() {
+	registry = new map<T, InnerLockRegistryInfo *>;
+	pthread_mutex_init(&mutex, NULL);
+}
+
+void InnerLockRegistry::lockRegistryMutex() {
+	pthread_mutex_lock(&mutex);
+}
+
+void InnerLockRegistry::unlockRegistryMutex() {
+	pthread_mutex_unlock(&mutex);
+}
+
+template <typename T>
+void InnerLockRegistry::print() {
+	map<T, LockRegistryInfo *>::iterator registry_iter = registry->begin();
+	while (registry_iter != registry->end()) {
+		cout << "Lock registry for lock with id: " << registry_iter->first;
+		cout << "================================" << endl;
+		registry_iter->second->print();
+		cout << endl;
+		++registry_iter;
+	}
+}
+
+InnerLockRegistry::~InnerLockRegistry() {
+	delete registry;
+	pthread_mutex_destroy(&mutex);
+}
+
+/**
+ * Invoked when a thread tries to acquire a lock
+ * If the lock is already acquired by another thread
+ * then the method adds the thread into a list of blocked threads
+ * and returns false. Otherwise it registers the owner of the monitor (lock)
+ * as the invoking thread and returns true.
+ */
+template <typename T>
+bool InnerLockRegistry::tryAcquiringLock(Threadstate *state, const T &lockId) {
+
+	map<T, LockRegistryInfo *>::iterator registry_iter;
+//
+//
+//		ReentrantLockRegistryInfo *lockRegistryInfo = (ReentrantLockRegistryInfo *)registry_iter -> second;
+//		if (lockRegistryInfo->isMonitorFree() || lockRegistryInfo->isCurrentOwnerThread(state)) {
+//
+//	} else {
+//		(*registry)[lockId] = new ReentrantLockRegistryInfo(state);
+//
+//	}
+//
+//
+	lockRegistryMutex();
+	registry_iter = registry -> find(lockId);
+
+	if (registry_iter != registry -> end()) {
+		LockRegistryInfo *lockRegistryInfo = (LockRegistryInfo *)registry_iter -> second;
+		if (lockRegistryInfo->isMonitorFree()) {
+			lockRegistryInfo->enterMonitor();
+			////cout << state->getName() << " acquired monitor " << lockId << endl;
+			unlockRegistryMutex();
+			return true;
+		} else {
+			lockRegistryInfo->blockOnMonitor(state);
+			////cout << state->getName() << " blocked on contended monitor " << lockId << endl;
+			unlockRegistryMutex();
+			return false;
+		}
+	} else {
+		(*registry)[lockId] = new LockRegistryInfo();
+		////cout << state->getName() << " acquired monitor " << lockId << endl;
+		unlockRegistryMutex();
+		return true;
+	}
+}
+
+/*
+ * This method releases an already acquired lock
+ */
+template <typename T>
+ThreadState *InnerLockRegistry::releaseAndGetNext(const int &lockId) {
+	map<T, LockRegistryInfo *>::iterator registry_iter;
+	lockRegistryMutex();
+
+	registry_iter = registry -> find(lockId);
+
+	ThreadState *state = NULL;
+	if (registry_iter != registry -> end()) {
+		LockRegistryInfo *lockRegistryInfo = (LockRegistryInfo *)registry_iter -> second;
+
+		vector<ThreadState *> *lockThreadList = lockRegistryInfo -> getThreadsBlockedOnMonitor();
+
+		if (lockThreadList -> empty()) {
+			////cout << "monitor " << lockId << " released and there is no-one to claim it" << endl;
+			lockRegistryInfo->releaseMonitor();
+		} else {
+			vector<ThreadState *>::iterator vect_iter = lockThreadList -> end();
+			--vect_iter;
+			state = *vect_iter;	// the state is now the owner of the monitor
+			lockThreadList -> pop_back();
+
+			////cout << state->getName() << " acquired monitor " << lockId << " that was just released" << endl;
+		}
+	}
+
+	unlockRegistryMutex();
+
+	return state;
+
+}
+
+
+bool ReentrantLockRegistry::tryAcquiringLock(ThreadState *state, const int &lockId) {
+	map<int, LockRegistryInfo *>::iterator registry_iter;
+
+	lockRegistryMutex();
+	registry_iter = registry -> find(lockId);
+
+	if (registry_iter != registry -> end()) {
+		ReentrantLockRegistryInfo *lockRegistryInfo = (ReentrantLockRegistryInfo *)registry_iter -> second;
+		if (lockRegistryInfo->isMonitorFree() || lockRegistryInfo->isCurrentOwnerThread(state)) {
+			lockRegistryInfo->enterMonitor(state);
+			////cout << state->getName() << " acquired monitor " << lockId << endl;
+			unlockRegistryMutex();
+			return true;
+		} else {
+			lockRegistryInfo->blockOnMonitor(state);
+			////cout << state->getName() << " blocked on contended monitor " << lockId << endl;
+			unlockRegistryMutex();
+			return false;
+		}
+	} else {
+		(*registry)[lockId] = new ReentrantLockRegistryInfo(state);
+//cout << state->getName() << " CREATED AND acquired monitor " << lockId << endl;
+		unlockRegistryMutex();
+		return true;
+	}
+}
+
+/*
+ * This method releases an already acquired lock
+ */
+ThreadState *ReentrantLockRegistry::releaseAndGetNext(const int &lockId) {
+	map<int, LockRegistryInfo *>::iterator registry_iter;
+	lockRegistryMutex();
+
+	registry_iter = registry -> find(lockId);
+
+	ThreadState *state = NULL;
+	if (registry_iter != registry -> end()) {
+		ReentrantLockRegistryInfo *lockRegistryInfo = (ReentrantLockRegistryInfo *)registry_iter -> second;
+
+		vector<ThreadState *> *lockThreadList = lockRegistryInfo -> getThreadsBlockedOnMonitor();
+
+		if (lockRegistryInfo->releaseMonitor() && !lockThreadList -> empty()) {
+			vector<ThreadState *>::iterator vect_iter = lockThreadList -> end();
+			--vect_iter;
+			state = *vect_iter;	// the state is now the owner of the monitor
+			lockThreadList -> pop_back();
+			lockRegistryInfo->setNextOwner(state);
+//			cout << state->getName() << " acquired monitor " << lockId << " that was just released" << endl;
+		}
+	} else {
+		cout << " COULD NOT FIND monitor " << lockId << endl;
+		print();
+		assert(false);
+	}
+
+	unlockRegistryMutex();
+	return state;
+}
+
+
+LockRegistry::~LockRegistry() {
+	delete registry;
+}

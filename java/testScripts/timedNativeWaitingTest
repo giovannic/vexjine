@@ -1,0 +1,36 @@
+#!/bin/bash
+
+source testScripts/preamble
+
+ldlibbefore="$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:bin/vtf_tests/forwardleap/utils/"
+java $parameters -cp bin vtf_tests.forwardleap.GenericTest 0 1 0 0 0 0 0 0 0 0 0 1 &> $tempfile &
+sleep $sleepingtime
+export LD_LIBRARY_PATH="$ldlibbefore"
+
+if [ `ps aux | grep GenericTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep GenericTest | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+
+		if [ `cat $tempfile | grep "total waiting time" | awk '{print $4}' | awk -F "." '{print $1}'` -gt 7 ];then
+			echo "Failure"
+			cat $tempfile
+		else
+			echo "Success"
+			success=1
+		fi
+
+	fi
+
+fi
+
+
+if [ -z "$success" ];then
+
+echo "java $parameters -cp bin vtf_tests.forwardleap.GenericTest 0 1 0 0 0 0 0 0 0 0 0 1"
+fi

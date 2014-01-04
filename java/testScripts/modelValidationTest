@@ -1,0 +1,32 @@
+#!/bin/bash 
+
+source testScripts/preamble
+
+java $parameters -cp bin vtf_tests.ModelSingle 10000 &> $tempfile &
+
+sleep $sleepingtime
+
+if [ `ps aux | grep ModelSingle | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep ModelSingle | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+
+		res=`cat $tempfile | grep iterations | awk '{print $4 - 21500}'`	#21500 is the theoretical model delay
+		if [ $res -lt -1000 -o $res -gt 1000 ];then
+			echo "Failure"
+		else
+			echo "Success"
+			success=1
+		fi
+	fi
+
+fi
+
+
+if [ -z "$success" ];then
+echo "java $parameters -cp bin vtf_tests.ModelSingle 10000"
+fi

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+tests=`ls testScripts/ | grep Test | grep -viE "~" | grep Validation | wc -l`
+
+i=1
+echo "======================================================"
+
+while [ $i -le $tests ];do
+
+newtest=`ls testScripts/ | grep Test | grep -viE "~" | grep Validation | head -$i | tail -1`
+
+#if [[ "$newtest" =~ model.* ]];then
+#echo $newtest Skipping
+#elif [[ "$newtest" =~ multicore.* ]];then
+#echo $newtest Skipping
+#else
+#echo -n $newtest" $1 "
+#echo `./testScripts/$newtest $1`
+#echo "======================================================"
+#fi
+
+if [ "$newtest" == "modelTimingValidationTest" ];then
+./testScripts/$newtest $1
+elif [ "$newtest" == "multicoreLockingValidationTest" ];then
+./testScripts/$newtest $1
+else
+#echo -n $newtest" "Skipping
+echo `./testScripts/$newtest $1`
+echo "======================================================"
+fi
+
+i=$((i+1))
+done

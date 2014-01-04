@@ -1,0 +1,35 @@
+#!/bin/bash
+
+iterations=10
+maindir=$PWD
+
+j=1
+
+if [ -f "overheadResults.csv" ];then
+rm overheadResults.csv
+fi
+
+modes=("perfctrrelease" "papirelease" "release")
+
+while [ $j -le 1 ];do
+
+mode=${modes[$j]}
+
+#cd ../../java
+#make clean
+#make $mode
+#cd $maindir
+
+i=1
+while [ $i -le 10 ];do
+
+echo $mode,`./perftest methods`,`./perftest io` >> overheadResults.csv
+
+i=$((i+1))
+done
+echo >> overheadResults.csv
+
+
+j=$((j+1))
+done
+

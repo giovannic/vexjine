@@ -1,0 +1,42 @@
+#!/bin/bash
+
+if [ -z $3 ];then
+echo "Syntax: ./testVexCoreWithRandomProgram <maxthreads: 1|x2|max> <maxmethods: 200|+100|max> <options> <iterations>"
+exit
+fi
+
+methods=200
+maxthreads=$1
+maxmethods=$2
+
+options=$3
+iterations=$4
+#"output_dir=results,cpus=2,timeslot=10"
+echo Methods,Threads,Real,VEX prediction,VEX total time
+while [ $methods -le $maxmethods ];do
+
+onlyselected=N
+
+i=1
+while [ $i -le $maxthreads ];do
+
+iteration=1
+while [ $iteration -le $iterations ];do
+
+real=`./randomprogram $options $methods $i 100 $onlyselected yes | grep Real | tr  " " "\n" | head -1`
+./randomprogram $options $methods $i 100 $onlyselected > _vex_execution
+vex=`cat _vex_execution | grep VTF |  tr  " " "\n" | head -1`
+vex_time=`cat _vex_execution | grep Real |  tr  " " "\n" | head -1`
+echo $methods,$i,$real,$vex,$vex_time
+
+
+cp -r results tempres/iteration$i
+
+iteration=$((iteration+1))
+done
+
+i=$((i*2))
+done
+
+methods=$((methods + 100))
+done

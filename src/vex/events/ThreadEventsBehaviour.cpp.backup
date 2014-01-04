@@ -1,0 +1,716 @@
+/*
+ * ThreadEventsBehaviour.cpp
+ *
+ *  Created on: 18 Oct 2011
+ *      Author: root
+ */
+
+#include "Constants.h"
+#include "ThreadEventsBehaviour.h"
+#include "Statistics.h"
+#include "ThreadState.h"
+#include "Time.h"
+#include "DebugUtil.h"
+#include "ThreadManager.h"
+
+#include <cassert>
+#include <climits>
+#include <iostream>
+
+using namespace std;
+
+ThreadEventsBehaviour::ThreadEventsBehaviour(ThreadManagerRegistry *_managers, ThreadRegistry *_registry, EventLogger *_eventLogger, ObjectRegistry *_waitingOnObjectRegistry, LockRegistry *_lockRegistry, AggregateStateCounters *_aggregateStateTransitionCounters, const bool &_stackTraceMode, const bool &_usingVtfScheduler) {
+	managers = _managers;
+	registry = _registry;
+	eventLogger = _eventLogger;
+	waitingOnObjectRegistry = _waitingOnObjectRegistry;
+	lockRegistry = _lockRegistry;
+	aggregateStateTransitionCounters = _aggregateStateTransitionCounters;
+	stackTraceMode = _stackTraceMode;
+	usingVtfScheduler = _usingVtfScheduler;
+}
+
+ThreadEventsBehaviour::~ThreadEventsBehaviour() {
+
+}
+
+
+void ThreadEventsBehaviour::onStart(const long &threadId, const char *threadName) {
+//	if (strcmp(threadName, "ContainerBackgroundProcessor[StandardEngine[Catalina]]") == 0 ||
+//			strcmp(threadName, "TP-Monitor") == 0) {
+//		cout << "Ignoring Apache Tomcat threads that are calling poll() (native waiting) like " << threadName << endl;
+//		registry->newThreadStarted();
+//		return;
+//	}
+
+	if (strcmp(threadName, "DestroyJavaVM") == 0) {
+		return;
+	}
+
+	if (strcmp(threadName, "FlushManager") == 0) {
+		registry->newThreadStarted();
+		return;
+	}
+
+	long newThreadId = (unsigned long) syscall(SYS_gettid);
+	ThreadState *state = registry->getCurrentThreadState(newThreadId);
+	if (state == NULL) {
+		if (!stackTraceMode) {
+			state = new ThreadState(threadId, (char *)threadName);
+		} else {
+			state = new StackTraceThreadState(threadId, (char *)threadName);
+		}
+		if (state != NULL) {
+			managers->onThreadSpawn(state);
+		}
+	} else {
+		managers->suspendCurrentThread(state, 0, ThreadManager::SUSPEND_OPT_FORCE_SUSPEND);
+	}
+	LOG_LAST_VEX_METHOD(state)
+
+}
+
+void ThreadEventsBehaviour::onWaitingStart() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		long long startingTime = state->getThreadTimeBeforeMethodInstrumentation();
+
+		state->onVexEntry();
+		// Thread locks are acquired here, so that the thread manager does not change while we are executing a method of ThreadManager
+		state->lockShareResourceAccessKey();
+		long clearTimeout = -1;
+		state->setTimeout(clearTimeout);
+
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);	// this also checks for and suspends native waiting threads
+		manager->onThreadWaitingStart(startingTime, state);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+	}
+}
+
+void ThreadEventsBehaviour::onWaitingEnd() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);	// this also checks for and suspends native waiting threads
+		manager->onThreadWaitingEnd(state);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+	}
+}
+
+void ThreadEventsBehaviour::onNativeWaitingStart() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		long long startingTime = state->getThreadTimeBeforeMethodInstrumentation();
+
+		state->onVexEntry();
+
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+
+		long clearTimeout = -1;
+		state->setTimeout(clearTimeout);
+
+		manager->onThreadNativeWaitingStart(startingTime, state);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+	}
+}
+
+void ThreadEventsBehaviour::onNativeWaitingEnd() {
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+
+		manager->onThreadNativeWaitingEnd(state);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+
+	}
+}
+
+
+void ThreadEventsBehaviour::onContendedLockEnter() {
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		long long startingTime = state->getVirtualTime();
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+
+		manager->onThreadContendedEnter(state, startingTime);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+
+	}
+}
+
+void ThreadEventsBehaviour::onContendedLockEntered() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->onThreadContendedEntered(state);
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+
+	}
+}
+
+
+
+
+bool ThreadEventsBehaviour::onSignallingOnObject(const int &objectId) {
+	long long startingTime = Time::getThreadTimeBeforeInteractionPoint(); // used to account for as lost time
+
+	bool aThreadWasSignalled = false;
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		// Update the time of this thread, in order to set it as the interrupt time of the waiting thread
+		state->addInvocationPoints();
+
+		ThreadManager *stateManager;
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->lockShareResourceAccessKey();
+			state->getThreadCurrentlyControllingManager()->suspendCurrentThread(state, startingTime, 0);	// if thread was found to be native waiting do not suspend again
+		} else {
+			state->lockShareResourceAccessKey();
+		}
+		stateManager = state->getThreadCurrentlyControllingManager();	// might have changed since the variable declaration (meaning that we cannot initialize there)
+
+		long nextWaitingThreadId = waitingOnObjectRegistry->findNext(objectId);
+
+		if (nextWaitingThreadId != 0) {
+			ThreadState *threadToInterruptState = registry->getCurrentThreadState(nextWaitingThreadId);
+
+			if (threadToInterruptState != NULL) {
+				threadToInterruptState->setTimedOut(true);
+				aThreadWasSignalled = true;
+				stateManager->onThreadTimedWaitingEnd(threadToInterruptState, state->getEstimatedRealTime());
+				//				cout << state->getName() << " ***notifies ONE *** " << threadToInterruptState->getName() << endl;
+
+			} else {
+				//				cout << *state << " will not notify anyone " << endl;
+				aThreadWasSignalled = false;	// the thread to be notified was not found - probably finished execution
+			}
+		} else {
+			stateManager->increasePendingNotifications();
+		}
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+
+	}
+	return aThreadWasSignalled;
+}
+
+
+
+bool ThreadEventsBehaviour::onBroadcastingOnObject(const int &objectId) {
+	long long startingTime = Time::getThreadTimeBeforeInteractionPoint(); // used to account for as lost time
+
+	bool aThreadWasSignalled = false;
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+
+	if (state != NULL) {
+		// Update the time of this thread, in order to set it as the interrupt time of the waiting thread
+		//		managers-> onThreadInteractionPointEncounter(state, startingTime);
+		state->addInvocationPoints();
+
+		//		vtflog(managerDebug & mypow2(15), managerLogfile, "INTERACTION POINT: suspending thread %s (%lld)\n", state->getName(), state->tid);
+		ThreadManager *stateManager;
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->lockShareResourceAccessKey();
+			state->getThreadCurrentlyControllingManager()->suspendCurrentThread(state, startingTime, 0);	// if it is in native waiting do not suspend again
+		} else {
+			state->lockShareResourceAccessKey();
+		}
+		stateManager = state->getThreadCurrentlyControllingManager();	// might have changed since the variable declaration (meaning that we cannot initialize there)
+
+		long nextWaitingThreadId = waitingOnObjectRegistry->getNext(objectId);
+		if (nextWaitingThreadId == 0) {
+			stateManager->increasePendingNotifications();
+		} else {
+
+			while (nextWaitingThreadId != 0) {
+				ThreadState *threadToInterruptState = registry->getCurrentThreadState(nextWaitingThreadId);
+				if (threadToInterruptState != NULL && threadToInterruptState->isWaiting()) {
+					threadToInterruptState->setTimedOut(true);
+					aThreadWasSignalled = true;
+					stateManager->onThreadTimedWaitingEnd(threadToInterruptState, state->getEstimatedRealTime());
+					// cout << state->getName() << " ***notifies*** " << threadToInterruptState->getName() << endl;
+
+				}
+				// NOTE: that's a bug: if one thread is signalled return true
+				//				else {
+				////					cout << state->getName() << " will not notify anyone " << endl;
+				//					aThreadWasSignalled = false;	// the thread to be notified was not found - probably finished execution
+				//				}
+				nextWaitingThreadId = waitingOnObjectRegistry->getNext(objectId);
+			}
+		}
+
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExit();
+	}
+
+	return aThreadWasSignalled;
+}
+
+
+
+bool ThreadEventsBehaviour::onInterrupt(const long &interruptedThreadId) {
+	long long startingTime = Time::getThreadTimeBeforeInteractionPoint();
+
+	bool returnVal = false;
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+
+	ThreadManager *stateManager = NULL;
+	long currentTime;
+	if (state != NULL) {
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->updateThreadLocalTimeSinceLastResumeTo(startingTime);	// else thread is updated internally during suspending of the native waiting thread
+		}
+		currentTime = state->getEstimatedRealTime();
+
+		state->lockShareResourceAccessKey();
+		stateManager = getCurrentlyControllingManagerOf(state);
+	} else {
+
+		stateManager = managers->getDefaultManager();
+		currentTime = 0;
+		// A JVM thread wants to interrupt - no danger for this thread to be interrupted by a scheduler when it's holding locks
+		// so no need to hold any scheduler lock
+	}
+
+	long interruptedThreadIdL = interruptedThreadId;
+	ThreadState *threadToInterruptState = registry->getCurrentThreadState(interruptedThreadIdL);
+	if (threadToInterruptState != NULL && threadToInterruptState -> isTimedWaiting()) {
+
+		vtflog(true, stderr, "The thread to be interrupted is %s %lld at %lld\n", threadToInterruptState->getName(), threadToInterruptState->getUniqueId(), currentTime);
+		threadToInterruptState->setTimedOut(false);	//so that the thread returns it and lets the java agent know that is has been interrupted
+		returnVal = true;
+		stateManager->onThreadTimedWaitingEnd(threadToInterruptState, currentTime);
+
+	}
+
+	if (state != NULL) {
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExit();
+	}
+
+	return returnVal;
+}
+
+
+
+bool ThreadEventsBehaviour::beforeTimedWaitingOn(const int &objectId, const bool &updateLockRegistry) {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		long long startingTime = state->getVirtualTime();
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->updateThreadLocalTimeSinceLastResumeTo(startingTime);// else the thread is updated inside the suspend code for the native waiting thread
+		}
+
+		state->lockShareResourceAccessKey();
+
+//cout <<state -> getName() << " starting waiting after releasing " << objectId << endl;
+		waitingOnObjectRegistry->insert(objectId, state->getUniqueId());
+//waitingOnObjectRegistry->print();
+//		state->unlockShareResourceAccessKey();	// unlocked in onTimedWaitingOn
+		if (updateLockRegistry) {
+			onLocklessReleasingLock(state, objectId);
+		}
+
+		state->onVexExitWithoutTimeUpdate();
+		return true;
+	} else {
+		return false;
+	}
+}
+
+
+
+void ThreadEventsBehaviour::onLocklessRequestingLock(ThreadState *state, const int &lockId) {
+	if (!lockRegistry->tryAcquiringLock(state, lockId)) {
+		// the lock is already held
+		ThreadManager *stateManager = state->getThreadCurrentlyControllingManager();
+		long noTimeout = 0;
+//		cout << state->getName() << " " << state->getId() <<  " tried and will block before acquiring monitor " << lockId << endl;
+		stateManager->onThreadTimedWaitingStart(state, noTimeout);
+//		cout << state->getName() << " " << state->getId() <<  " is not unblocked and will acquire monitor " << lockId << endl;
+	} else {
+//		cout << state->getName() << " " << state->getId() <<  " tried and acquired monitor " << lockId << endl;
+	}
+}
+
+void ThreadEventsBehaviour::onLocklessReleasingLock(ThreadState *state, const int &lockId) {
+
+	ThreadState *threadBlockedOnMonitor = lockRegistry->releaseAndGetNext(lockId);
+	if (threadBlockedOnMonitor != NULL) {
+cout << state->getName() << " " << state->getId() <<  " releasing monitor " << lockId << " and getNext on " << lockId << " was " << threadBlockedOnMonitor->getName() << endl;
+		// unblock the previously blocked thread
+		ThreadManager *stateManager = state->getThreadCurrentlyControllingManager();
+		threadBlockedOnMonitor->lockShareResourceAccessKey();
+//		stateManager->pushIntoRunnableQueue(threadBlockedOnMonitor);
+
+		state->setTimeout(0); // Used to trigger push back in onThreadTimedWaitingEnd - omg, this code is so bad...
+		stateManager->onThreadTimedWaitingEnd(threadBlockedOnMonitor, state->getEstimatedRealTime());
+		threadBlockedOnMonitor->unlockShareResourceAccessKey();
+	} else {
+cout << state->getName() << " " << state->getId() <<  " releasing monitor " << lockId << " and getNext on " << lockId << " was null" << endl;
+	}
+}
+
+
+
+void ThreadEventsBehaviour::onRequestingLock(const int &lockId) {
+	ThreadState *state = ThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
+	if (state != NULL) {
+		long long startingTime = state->getVirtualTime();
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->updateThreadLocalTimeSinceLastResumeTo(startingTime);// else the thread is updated inside the suspend code for the native waiting thread
+		}
+		state->lockShareResourceAccessKey();
+
+		onLocklessRequestingLock(state, lockId);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+	}
+}
+
+void ThreadEventsBehaviour::onReleasingLock(const int &lockId) {
+	ThreadState *state = ThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
+	if (state != NULL) {
+		long long startingTime = state->getVirtualTime();
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->updateThreadLocalTimeSinceLastResumeTo(startingTime);// else the thread is updated inside the suspend code for the native waiting thread
+		}
+		state->lockShareResourceAccessKey();
+
+		onLocklessReleasingLock(state, lockId);
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+	}
+}
+
+bool ThreadEventsBehaviour::onTimedWaitingOn(const int &objectId, const long &timeout, const int &nanoTimeout, const bool &updateLockRegistry) {
+	ThreadState *state = ThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
+	if (state != NULL) {
+
+		state->onVexEntry();
+//		state->lockShareResourceAccessKey();	// hack-performance optimization (in combination with unlockShareResourceAccessKey from beforeTimedWaitingOn)
+
+		ThreadManager *stateManager = state->getThreadCurrentlyControllingManager();
+
+		state->setTimedWaitingObjectId(objectId);
+		long correctTimeout = ensureTimeoutIsLessThanMax(timeout, nanoTimeout);
+		stateManager->onThreadTimedWaitingStart(state, correctTimeout);
+
+		if (updateLockRegistry) {
+			onLocklessRequestingLock(state, objectId);
+		}
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+		return state->getTimedOut();
+	} else {
+		return false;
+	}
+}
+
+
+bool ThreadEventsBehaviour::onSleepingStart(const long &timeout, const int &nanoTimeout) {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		long long startingTime = state->getVirtualTime();
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->updateThreadLocalTimeSinceLastResumeTo(startingTime);// else the thread is updated inside the suspend code for the native waiting thread
+		}
+
+		long correctTimeout = ensureTimeoutIsLessThanMax(timeout, nanoTimeout);
+
+		state->lockShareResourceAccessKey();
+		ThreadManager *stateManager = state->getThreadCurrentlyControllingManager();
+		state->setTimedWaitingObjectId(0);
+		assert(stateManager != NULL);
+		stateManager->onThreadTimedWaitingStart(state, correctTimeout);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+		return state->getTimedOut();
+	}
+	return false;
+
+}
+
+void ThreadEventsBehaviour::beforeCreatingThread() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+
+		registry -> newThreadBeingSpawned();		// counter used to avoid leaps in virtual time
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->updateCurrentThreadVT(state);
+
+		state->doNotSuspend();	// used to avoid interrupting thread holding the malloc-related lock
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+	}
+}
+
+void ThreadEventsBehaviour::afterCreatingThread() {
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		state->allowSuspend();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->updateCurrentThreadVT(state);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExit();
+	}
+}
+
+
+void ThreadEventsBehaviour::onJoin(const long &joiningThreadId) {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+
+	if (state != NULL) {
+		long long startingTime = state->getThreadTimeBeforeMethodInstrumentation();
+		if (ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, startingTime)) {
+			state->updateThreadLocalTimeSinceLastResumeTo(startingTime);	// otherwise time is updated in suspend
+		}
+
+		state->lockShareResourceAccessKey();
+		registry->coordinateJoiningThreads(ThreadState::getCurrentThreadStatePtr(), joiningThreadId); // state thread calls thread.join() with thread = thread with joiningThreadId
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+	}
+}
+
+
+void ThreadEventsBehaviour::onExplicitWaitingStart() {
+	long long startingTime =  Time::getThreadTimeBeforeInteractionPoint();
+	ThreadState *state = ThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->onThreadExplicitlySetWaiting(startingTime, state);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExit();
+	}
+}
+
+
+
+void ThreadEventsBehaviour::onExplicitWaitingEnd() {
+	long long startingTime =  Time::getThreadTimeBeforeInteractionPoint();
+
+	ThreadState *state = ThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->suspendCurrentThread(state, startingTime, ThreadManager::SUSPEND_OPT_FORCE_SUSPEND);
+
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+		// from now on you are again part of the VTF
+	}
+}
+
+
+
+void ThreadEventsBehaviour::onInteractionPoint() {
+	long long startingTime = Time::getThreadTimeBeforeInteractionPoint(); // used to account for as lost time
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->onThreadInteractionPointEncounter(state, startingTime);
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+	}
+}
+
+
+void ThreadEventsBehaviour::onYield() {
+	long long startingTime = Time::getThreadTimeBeforeInteractionPoint(); // used to account for as lost time
+
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->onThreadYield(state, startingTime);
+		LOG_LAST_VEX_METHOD(state)
+		state->unlockShareResourceAccessKey();
+		state->onVexExitWithoutTimeUpdate();
+
+	}
+
+}
+
+
+void ThreadEventsBehaviour::onEnd() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+		state->lockShareResourceAccessKey();
+
+		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+		manager->onThreadEnd(state);
+		state->unlockShareResourceAccessKey();
+
+		state->onVexExitWithoutTimeUpdate();
+		// The thread is no longer part of VEX - it doesn't need to take the thread lock to access the following shared resources
+#if COUNT_STATE_TRANSITIONS == 1
+		aggregateStateTransitionCounters->addTransitionsOf(state);
+#endif
+		eventLogger->onThreadEnd(state);
+
+		registry->cleanup(state);
+	}
+}
+
+
+long long ThreadEventsBehaviour::getTime() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state == NULL) {
+		long returnValue = 1;
+		returnValue = managers->getGlobalTime();
+		return (returnValue>0)?returnValue:1;
+
+	} else {
+		// Update time
+		long long startingTime = state->getThreadTimeBeforeMethodInstrumentation();
+
+		long long returnValue = 1;
+
+		if (!usingVtfScheduler) {
+			state->lockShareResourceAccessKey();
+			ThreadManager *manager = getCurrentlyControllingManagerOf(state);
+			manager->setCurrentThreadVT(startingTime, state);
+			state->unlockShareResourceAccessKey();
+		}
+
+		state->updateThreadLocalTimeSinceLastResumeTo(startingTime);
+		returnValue = state->getEstimatedRealTime();
+
+		LOG_LAST_VEX_METHOD(state)
+		state->onVexExit();
+		return returnValue;
+
+	}
+}
+
+
+/***
+ * The public version of the ensure thread is not in native waiting state
+ */
+void ThreadEventsBehaviour::ensureThreadIsNotInNativeWaitingStateWhenEnteringVex() {
+	ThreadState *state = ThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(state, 0);
+		state->onVexExit();
+	}
+
+
+}
+
+long ThreadEventsBehaviour::ensureTimeoutIsLessThanMax(const long &timeout, const int &nanoTimeout) {
+	if (timeout >= (LONG_MAX/1000000)) {
+		return LONG_MAX;
+	} else {
+		return timeout * 1000000 + nanoTimeout;
+	}
+}
+
+bool ThreadEventsBehaviour::ensureThreadIsNotInNativeWaitingStateWhenEnteringVex(ThreadState *state, const long long &startingTime) {
+	bool threadIsNotInNativeWaiting = true;
+
+	state->onVexEntry();
+
+	if (!state->isRunning() || state->getThreadCurrentlyControllingManager() == NULL) {
+		state->setCustom2();
+		state->lockShareResourceAccessKey();
+		managers->getDefaultManager()->suspendLooseCurrentThread(state, startingTime);
+		//managers->getDefaultManager()->suspendCurrentThread(state, startingTime, ThreadManager::SUSPEND_OPT_EXTERNALLY_LOCKED | ThreadManager::SUSPEND_OPT_FORCE_SUSPEND | ThreadManager::SUSPEND_OPT_DONT_WAKE_UP_SCHEDULER);
+		state->unlockShareResourceAccessKey();
+		threadIsNotInNativeWaiting = false;
+
+		assert(state->getThreadCurrentlyControllingManager() != NULL);
+	}
+
+	if (!state->isRunning()) {
+		cout << "Illegal state for thread " << state->getName() << ": " << state->getCurrentStateName() << endl;
+	}
+
+	assert(state->getThreadCurrentlyControllingManager() != NULL);
+	//		assert(state->isRunning());
+	return threadIsNotInNativeWaiting;
+}
+
+
+ThreadManager *ThreadEventsBehaviour::getCurrentlyControllingManagerOf(ThreadState *state) {
+
+	state->onVexEntry();
+	ThreadManager *manager = state->getThreadCurrentlyControllingManager();
+	while (manager == NULL) {
+		managers->getDefaultManager()->suspendLooseCurrentThread(state, 0);
+		manager = state->getThreadCurrentlyControllingManager();
+	}
+	return manager;
+}

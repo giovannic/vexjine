@@ -1,0 +1,25 @@
+#!/bin/bash 
+
+source testScripts/preamble
+
+java $parameters -cp bin vtf_tests.ParkTest $parkingthreads 4 &> $tempfile &
+
+sleep $shortsleeping
+
+if [ `ps aux | grep ParkTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	kill -9 `ps aux | grep ParkTest | grep -viE grep | awk '{print $2}'`
+	echo "Success"
+	success=1
+else
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+		echo "Failure should not terminate when unparking happens before parking"
+	fi
+fi
+
+
+if [ -z "$success" ];then
+echo "java $parameters -cp bin vtf_tests.ParkTest $parkingthreads 4"
+fi
+

@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cat codes |perl -lne 'print "case $1: return \"$1\";" if /#define ([A-Za-z_0-9]*)/' 
+

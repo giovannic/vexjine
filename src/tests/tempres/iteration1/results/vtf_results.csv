@@ -1,0 +1,19 @@
+,*Mean* per stack trace times in ms
+Stack trace (self% - Total aggr. time - Invocations),Total time,CPU Time,Waiting,I/O,Runnable,Total time-inclusive,CPU Time-inclusive,Waiting-inclusive,I/O-inclusive,Runnable-inclusive
+
+Simulation execution time in ms,611.145
+Estimated Execution Time (EET) in ms,597.796
+Aggregate-Serialized Execution Time (AET) in ms,0.000
+Average Parallelism (AET/EET),0.000
+Compensation for instrumentation delay,0
+Compensation for IP delay,0
+Compensation for I/O instrumentation delay,0
+Compensation for sched_yield system call,0
+Total GC time [ms],0.000
+Total collections,0
+Mean GC time,-nan
+Maximum stack depth,0
+Threads controlled,2
+VEX signals sent,0
+Total profiled method invocations,0-1
+

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+microseconds=10000
+
+if [ -f "mainSchedulerTimeslices.csv" ];then
+rm mainSchedulerTimeslices.csv
+fi
+
+while [ $microseconds -le 1000000 ];do
+
+echo `echo "$microseconds/ 1000" | bc` >> mainSchedulerTimeslices.csv
+./randomprogram "timeslot=$microseconds" 500 1 100 N >> mainSchedulerTimeslices.csv
+echo >> mainSchedulerTimeslices.csv
+
+#echo `echo "$microseconds/ 1000" | bc`,$avg,$std
+
+microseconds=$((microseconds * 2))
+done
+
+
+milliseconds=1
+while [ $milliseconds -le 10 ];do
+
+echo `echo "1000 * $milliseconds" | bc` >> mainSchedulerTimeslices.csv
+./randomprogram "timeslot=$milliseconds" 500 1 100 N >> mainSchedulerTimeslices.csv
+echo >> mainSchedulerTimeslices.csv
+#echo `echo "1000 * $milliseconds" |bc`,$avg,$std
+
+milliseconds=$((milliseconds * 10))
+done

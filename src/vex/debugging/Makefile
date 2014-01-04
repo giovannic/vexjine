@@ -1,0 +1,26 @@
+include ../../Makefile.inc
+
+all: DebugUtil.o Visualizer.o Logger.o LinearRegression.o AutoRegression.o
+#QStats.o 
+CFLAGS+=-c -fPIC $(CPPFLAGS)
+
+Logger.o: Logger.cpp Logger.h
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $< -o $@
+
+AutoRegression.o: AutoRegression.cpp AutoRegression.h
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $< -o $@
+
+LinearRegression.o: LinearRegression.cpp LinearRegression.h
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $< -o $@
+ 
+DebugUtil.o: DebugUtil.cpp DebugUtil.h
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $< -o $@
+
+Visualizer.o: Visualizer.cpp Visualizer.h
+	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $< -o $@
+
+#QStats.o: QStats.cpp QStats.h
+#	$(CC) $(CFLAGS) $(INCLUDE_DIRS) $< -o $@
+	
+clean:
+	rm -rf *.o 

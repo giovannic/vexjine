@@ -1,0 +1,98 @@
+include Makefile.inc
+
+CC=g++
+CFLAGS=-O0 -fPIC -g3 -Wall -c -DVTF_PROFILING_RUN
+OPTFLAGS=-O3 -fPIC -g3 -Wall -c -DVTF_PROFILING_RUN
+TESTFLAGS=-O0 -g3 -Wall
+
+JVMTI_LIBRARY_NAME=libJVMTIAgent.so
+JVMTI_LIBRARY_TESTER_NAME=libJVMTIAgent_tester.so
+JVMTI_LIBRARY_MINIMAL_NAME=libJVMTIAgent_minimal.so
+JVMTI_LIBRARY_LIGHT_NAME=libJVMTIAgent_light.so
+
+CPP_SRC=src
+JAVA_SRC=java/src
+JAVA_BIN=java/build/classes
+ANT_FILE=java/build.xml
+
+OBJECTS=JVMTIUtil.o IoSimulator.o MethodCallInfo.o InnerSocketBufferRegistry.o ThreadState.o ThreadManager.o ProfilingEventProcessor.o PerformanceMeasure.o Visualizer.o
+
+all: $(JVMTI_LIBRARY_NAME) $(JVMTI_LIBRARY_TESTER_NAME) $(JVMTI_LIBRARY_MINIMAL_NAME) $(JVMTI_LIBRARY_LIGHT_NAME) jar
+
+$(JVMTI_LIBRARY_NAME): $(OBJECTS) JVMTIAgent.o
+	$(CC) $(JAVA_LIBS) $(LDFLAGS) -o $(JVMTI_LIBRARY_NAME) $(OBJECTS) JVMTIAgent.o
+	cp $(JVMTI_LIBRARY_NAME) java/lib
+
+$(JVMTI_LIBRARY_TESTER_NAME): $(OBJECTS) JVMTIAgent_tester.o
+	$(CC) $(JAVA_LIBS) $(LDFLAGS) -o $(JVMTI_LIBRARY_TESTER_NAME) $(OBJECTS) JVMTIAgent_tester.o
+	cp $(JVMTI_LIBRARY_TESTER_NAME) java/lib
+
+$(JVMTI_LIBRARY_MINIMAL_NAME): $(OBJECTS) JVMTIAgent_minimal.o
+	$(CC) $(JAVA_LIBS) $(LDFLAGS) -o $(JVMTI_LIBRARY_MINIMAL_NAME) $(OBJECTS) JVMTIAgent_minimal.o
+	cp $(JVMTI_LIBRARY_MINIMAL_NAME) java/lib
+
+$(JVMTI_LIBRARY_LIGHT_NAME): $(OBJECTS) JVMTIAgent_vtonly.o
+	$(CC) $(JAVA_LIBS) $(LDFLAGS) -o $(JVMTI_LIBRARY_LIGHT_NAME) $(OBJECTS) JVMTIAgent_vtonly.o
+	cp $(JVMTI_LIBRARY_LIGHT_NAME) java/lib
+
+JVMTIAgent.o: $(CPP_SRC)/JVMTIAgent.cpp
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+JVMTIAgent_tester.o: $(CPP_SRC)/JVMTIAgent_tester.cpp
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+JVMTIAgent_minimal.o: $(CPP_SRC)/JVMTIAgent_minimal.cpp
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+JVMTIAgent_vtonly.o: $(CPP_SRC)/JVMTIAgent_vtonly.cpp
+	$(CC) $(CFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+JVMTIUtil.o: $(CPP_SRC)/JVMTIUtil.cpp $(CPP_SRC)/JVMTIUtil.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+ThreadManager.o: $(CPP_SRC)/ThreadManager.cpp $(CPP_SRC)/ThreadManager.h
+	$(CC) $(CFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+ThreadState.o: $(CPP_SRC)/ThreadState.cpp $(CPP_SRC)/ThreadState.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+IoSimulator.o: $(CPP_SRC)/IoSimulator.cpp $(CPP_SRC)//IoSimulator.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+MethodCallInfo.o: $(CPP_SRC)/MethodCallInfo.cpp $(CPP_SRC)/MethodCallInfo.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+InnerSocketBufferRegistry.o: $(CPP_SRC)/InnerSocketBufferRegistry.cpp $(CPP_SRC)/InnerSocketBufferRegistry.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+ProfilingEventProcessor.o: $(CPP_SRC)/ProfilingEventProcessor.cpp $(CPP_SRC)/ProfilingEventProcessor.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+PerformanceMeasure.o: $(CPP_SRC)/PerformanceMeasure.cpp $(CPP_SRC)/PerformanceMeasure.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+Visualizer.o: $(CPP_SRC)/Visualizer.cpp $(CPP_SRC)/Visualizer.h
+	$(CC) $(OPTFLAGS)  $(JAVA_HEADERS) $< -o $@
+
+javac: 
+	ant -buildfile $(ANT_FILE) javac
+	
+jar:
+	ant -buildfile $(ANT_FILE) instrument_jar	
+
+javah: javac
+	$(JAVA)bin/javah -d $(CPP_SRC) -jni -classpath $(JAVA_BIN) virtualtime.EventNotifier
+
+queue: $(JVMTI_LIBRARY_NAME) jar
+	$(JAVA)bin/java -cp $(JAVA_BIN):java/lib/asm-all-3.1.jar -agentpath:$(JVMTI_LIBRARY_NAME) -javaagent:java/build/instrument.jar=packages.properties queueing.QueueingSim 
+
+simpletest: $(JVMTI_LIBRARY_NAME) jar
+	$(JAVA)bin/java -version
+	$(JAVA)bin/java -cp $(JAVA_BIN):java/lib/asm-all-3.1.jar -agentpath:$(JVMTI_LIBRARY_NAME) -javaagent:java/build/instrument.jar simples.SimpleTest 1000 2000
+
+
+ 
+
+clean:
+	rm -rf *.o *.jnilib *.so runner runner.*
+	ant -buildfile $(ANT_FILE) clean

@@ -1,0 +1,32 @@
+#!/bin/bash 
+
+source testScripts/preamble
+
+java $parameters -cp bin vtf_tests.MulticoreTest 1 &> $tempfile &
+res=2.00
+
+sleep $shortsleeping
+
+if [ `ps aux | grep MulticoreTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep MulticoreTest | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+
+		success=`cat $tempfile | grep Correct | wc -l`
+		if [ $success -eq 1 ];then
+			echo "Success"
+		else
+			echo "Failure"
+		fi
+	fi
+
+fi
+
+
+if [ -z "$success" ];then
+echo "java $parameters -cp bin vtf_tests.MulticoreTest 1"
+fi

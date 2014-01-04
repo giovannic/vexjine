@@ -1,0 +1,48 @@
+#!/bin/bash 
+
+source testScripts/preamble
+
+java $parameters -cp bin vtf_tests.ParkTest $parkingthreads 3 &> $tempfile &
+
+sleep $middlesleeping
+
+if [ `ps aux | grep ParkTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep ParkTest | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+
+		parking=`cat $tempfile | grep " parking" | wc -l`
+		unparking=`cat $tempfile | grep " unparking" | wc -l`
+		if [ $parking -eq $unparking ];then
+			ppthreads=$((parkingthreads-1))
+			for i in $(seq 0 $ppthreads); do
+				t=`echo "($i+1)*2"|bc`
+				res=`cat $tempfile | grep -E "ParkingThread$i unparking after $t\.0 at 1\.0" | wc -l`
+				if [ $res -eq 1 ];then
+					success=1
+				else
+					unset success
+					i=$parkingthreads
+				fi
+			done
+			
+			if [ $success -eq 1 ];then
+				echo "Success"
+			else
+				echo "Failure a thread was unparked at the wrong time"
+			fi
+		else
+			echo "Failure parked $parking and unparked $unparking"
+		fi
+	fi
+fi
+
+
+if [ -z "$success" ];then
+echo "java $parameters -cp bin vtf_tests.ParkTest $parkingthreads 3"
+fi
+

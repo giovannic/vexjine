@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "-03"
+make clean;
+make papirelease
+
+sleep 1
+./testCompensation
+
+
+echo "GDB enabled"
+make clean
+make nologpapi
+
+sleep 1
+./testCompensation
+
+
+

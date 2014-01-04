@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="vtf_tests/iotests"/>
+	<classpathentry kind="src" path="caching"/>
+	<classpathentry kind="src" path="customadapter"/>
+	<classpathentry kind="src" path="queueing"/>
+	<classpathentry kind="src" path="realqueue"/>
+	<classpathentry kind="src" path="staticinstrument"/>
+	<classpathentry kind="src" path="virtualtime"/>
+	<classpathentry kind="src" path="vtf_profiler"/>
+	<classpathentry excluding="iotests/" kind="src" path="vtf_tests"/>
+	<classpathentry kind="src" path="vtf_visualizer"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/lib/asm-all-3.1.jar"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/lib/instrument.jar"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/lib/junit.jar"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/lib/junitperf-1.9.1.jar"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/lib/staticinstrument.jar"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/lib/vtfIO.jar"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/vtfIO.jar"/>
+	<classpathentry kind="lib" path="/home/nick/Documents/Research/new/vexjine-1.0/java/vtf.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

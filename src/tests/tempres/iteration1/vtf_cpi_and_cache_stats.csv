@@ -1,0 +1,4 @@
+Thread,CPU time,Real time,CPU/Real,CPI,L2 miss rate,Total cycles (millions),Instructions completed (millions),L2 misses,L2 accesses,User time [ms],Kernel time [ms],Max mem resident set pages,Text segment mem size x exec_ticks[kB],Data segment mem size x exec_ticks[kB],Stack mem size x exec_ticks[kB],Page faults without I/O (min),Page faults with I/O (maj),Process swap to mem times,File system inputs for read reqs,File system outputs for write reqs,IPC msgs sent,IPC msgs received,Signals received,Voluntary context switches,Involuntary context switches
+LWP-7010,123,1384106344777,8.95473e-11,0,0,0,0,0,0,136,8,4632,0,0,0,1343,0,0,0,8,0,0,0,1,14
+main,0,125,0.00390939,0,0,0,0,0,0,120,4,300,0,0,0,32,0,0,0,16,0,0,0,1,12
+Totals,62,692053172451,0.0019547,0,0,0,0,0,0,128,6,2466,0,0,0,687,0,0,0,12,0,0,0,1,13

@@ -1,0 +1,200 @@
+======================================================
+cpuInParallelWithWaitingTest  Success
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 10000.4ms leaping because aliveThreads = 1 7020060070437313393 7020060070437313393 at 1384116044667864158 and 1384116044868161498 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (2) in queue 0 at GVT 1961 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1961.11 WAITING main(19110) <<-,0x7f5c30269700, VT=2, ERT=1961, CPUt=2042 state: 2 <<-1>> WAITING (RUNNING) 1961/1384116044667 
+1) 11961.5 WAITING WaitingThread0(19125) <<-,0x7f5bdc000e70, VT=2, ERT=11961, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1961/1384116044667 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+10.047031873
+======================================================
+gcWaitingTest  Success
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+7.99999999850918E12 finished at 3.178208991
+WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 8715.85ms leaping because aliveThreads = 1 7020060070388843622 7020060070388843622 at 1384116059321122794 and 1384116059521449086 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (2) in queue 0 at GVT 3178 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1978.98 WAITING main(19155) <<-,0x7f8f74269730, VT=5, ERT=1978, CPUt=2011 state: 2 <<-1>> WAITING (RUNNING) 1978/1384116057718 
+1) 11894.8 WAITING WaitingThread0(19169) <<-,0x7f8f38000e70, VT=5, ERT=11894, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1893/1384116057617 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+10.001460678
+======================================================
+ioBlockingTest  Success
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 9954.49ms leaping because aliveThreads = 1 7020060072344171169 7020060072344171169 at 1384116076714476579 and 1384116076914886001 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (3) in queue 0 at GVT 1943 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1943.12 WAITING BlockIoThread0(19226) <<-,0x7f5114000e70, VT=2, ERT=1943, CPUt=23 state: 2 <<-1>> WAITING (RUNNING) 1897/1384116076690 
+1) 1943.15 WAITING main(19211) <<-,0x7f5164269700, VT=3, ERT=1943, CPUt=2016 state: 2 <<-1>> WAITING (RUNNING) 1943/1384116076714 
+2) 11897.6 WAITING WaitingThread0(19225) <<-,0x7f5120000e70, VT=3, ERT=11897, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1897/1384116076690 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+10.001126117
+======================================================
+ioNormalTest  Success
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+IO finished at 1.970011486
+WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 9958.41ms leaping because aliveThreads = 1 7020060070375673131 7020060070375673131 at 1384116090166696840 and 1384116090367091804 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (2) in queue 0 at GVT 1972 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1930.38 WAITING main(19395) <<-,0x7fac8c269700, VT=4, ERT=1930, CPUt=2044 state: 2 <<-1>> WAITING (RUNNING) 1930/1384116089773 
+1) 11930.5 WAITING WaitingThread0(19410) <<-,0x7fac3c000e70, VT=4, ERT=11930, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1929/1384116089772 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+10.001290164
+======================================================
+ioNormalWithThresholdTest  Success
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+IO finished at 1.97742003
+WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 9940.88ms leaping because aliveThreads = 1 7020060070356419559 7020060070356419559 at 1384116103218213336 and 1384116103418554344 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (2) in queue 0 at GVT 1980 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1920.53 WAITING main(19449) <<-,0x7f6d342697a0, VT=4, ERT=1920, CPUt=2041 state: 2 <<-1>> WAITING (RUNNING) 1920/1384116102849 
+1) 11921.1 WAITING WaitingThread0(19463) <<-,0x7f6ce4000e70, VT=4, ERT=11921, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1920/1384116102850 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+10.001451625
+======================================================
+joiningThreadsTest  java -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=adaptiveProfiling=10000 -agentpath:lib/libJVMTIAgent.so=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01 -cp bin vtf_tests.JoinTest 1 ./testScripts/joiningThreadsTest: line 18: [: -gt: unary operator expected Success
+
+*** Test log ***
+======================================================
+nativeWaitingTest  Success
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 9996.64ms leaping because aliveThreads = 1 7020060072236437200 7020060072236437200 at 1384116129204684949 and 1384116129405243365 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (3) in queue 0 at GVT 1908 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1908.28 NATIVE_WAITING NativeWaitingThread0(19743) <<-,0x7f2c74000eb0, VT=3, ERT=1908, CPUt=3 state: 11 NATIVE_WAITING (RUNNING) 1908/1384116128953 
+1) 1908.39 WAITING main(19727) <<-,0x7f2cd02697a0, VT=3, ERT=1908, CPUt=2022 state: 2 <<-1>> WAITING (RUNNING) 1908/1384116129204 
+2) 11905 WAITING WaitingThread0(19742) <<-,0x7f2c80000e70, VT=3, ERT=11905, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1904/1384116128952 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+NW finished at 11.913421595
+10.014330852
+======================================================
+timedNativeWaitingTest  Failure Starting GDB delay (to give enough time to attach gdb to process) Ending GDB delay (1) WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 9997.74ms leaping because aliveThreads = 1 7020060072224069054 7020060072224069054 at 1384116142230938700 and 1384116142431478027 and timeslot is 100000000 --------------------------------------------------- bin build.xml data INSTALL lib pame README README~ src testScripts utest utest~ vtest vtfIO.jar vtf.jar vtf_manager_log Printing threadStates list (3) in queue 0 at GVT 1904 and 0 spawning threads No thread set as currently running 0) 1902.22 WAITING main(19777) <<-,0x7f6ee02697a0, VT=3, ERT=1902, CPUt=2035 state: 2 <<-1>> WAITING (RUNNING) 1902/1384116142029 1) 1904.8 NATIVE_WAITING TimedNativeWaitingThread0(19792) <<-,0x7f6e94000ea0, VT=3, ERT=1904, CPUt=3 state: 11 NATIVE_WAITING (RUNNING) 1904/1384116142029 2) 11902.5 WAITING WaitingThread0(19791) <<-,0x7f6ea0000e70, VT=3, ERT=11902, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1902/1384116142029 bin build.xml data INSTALL lib pame README README~ src testScripts utest utest~ vtest vtfIO.jar vtf.jar vtf_manager_log Runnable threads list --------------------------------------------------- ============================ total waiting time 10.000007313 NW-multiple finished at 11.916531801 10.015438606 java -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=adaptiveProfiling=10000 -agentpath:lib/libJVMTIAgent.so=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01 -cp bin vtf_tests.forwardleap.GenericTest 0 1 0 0 0 0 0 0 0 0 0 1
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 9997.74ms leaping because aliveThreads = 1 7020060072224069054 7020060072224069054 at 1384116142230938700 and 1384116142431478027 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (3) in queue 0 at GVT 1904 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1902.22 WAITING main(19777) <<-,0x7f6ee02697a0, VT=3, ERT=1902, CPUt=2035 state: 2 <<-1>> WAITING (RUNNING) 1902/1384116142029 
+1) 1904.8 NATIVE_WAITING TimedNativeWaitingThread0(19792) <<-,0x7f6e94000ea0, VT=3, ERT=1904, CPUt=3 state: 11 NATIVE_WAITING (RUNNING) 1904/1384116142029 
+2) 11902.5 WAITING WaitingThread0(19791) <<-,0x7f6ea0000e70, VT=3, ERT=11902, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1902/1384116142029 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+total waiting time 10.000007313
+NW-multiple finished at 11.916531801
+10.015438606
+======================================================
+userIoTest  Success
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+>WaitingThread0 leaping up: GVT INCREASE IS ZERO. Leap by 10000.4ms leaping because aliveThreads = 1 7020060070497985915 7020060070497985915 at 1384116155231609784 and 1384116155431970812 and timeslot is 100000000
+
+
+---------------------------------------------------
+*****************************
+Printing threadStates list (2) in queue 0 at GVT 1992 and 0 spawning threads
+	 No thread set as currently running
+
+
+0) 1990.86 WAITING main(19829) <<-,0x7f42d4269700, VT=3, ERT=1990, CPUt=2125 state: 2 <<-1>> WAITING (RUNNING) 1990/1384116155229 
+1) 11992.5 WAITING WaitingThread0(19845) <<-,0x7f4280000e70, VT=3, ERT=11992, CPUt=0 state: 2 <<10.000s>> WAITING (WAITING) 1990/1384116155229 
+*****************************
+Runnable threads list
+---------------------------------------------------
+============================
+10.002479168
+======================================================
+waitInRealTimeTest  Failure - not enough timeouts in real time java -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=adaptiveProfiling=10000 -agentpath:lib/libJVMTIAgent.so=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01 -cp bin vtf_tests.forwardleap.GenericTest 0 1 0 0 0 0 0 0 1 0 0 0
+
+*** Test log ***
+Starting GDB delay (to give enough time to attach gdb to process)
+Ending GDB delay (1)
+Exception in thread "main" java.lang.VerifyError: Expecting a stackmap frame at branch target 226 in method vtf_tests.forwardleap.threadtypes.RealTimeWaitingThread.acceptConnections(I)V at offset 0
+	at vtf_tests.forwardleap.GenericTest.genericTest(GenericTest.java:65)
+	at vtf_tests.forwardleap.GenericTest.main(GenericTest.java:110)
+======================================================
+

@@ -1,0 +1,3 @@
+Thread,CPU time,Real time,CPU/Real,CPI,L2 miss rate,Total cycles (millions),Instructions completed (millions),L2 misses,L2 accesses,User time [ms],Kernel time [ms],Max mem resident set pages,Text segment mem size x exec_ticks[kB],Data segment mem size x exec_ticks[kB],Stack mem size x exec_ticks[kB],Page faults without I/O (min),Page faults with I/O (maj),Process swap to mem times,File system inputs for read reqs,File system outputs for write reqs,IPC msgs sent,IPC msgs received,Signals received,Voluntary context switches,Involuntary context switches
+main,22911,22938,0.998846,0,0,0,0,0,0,15408,7504,0,0,0,0,16,0,0,0,0,0,0,0,0,1985
+Totals,22911,22938,0.998846,0,0,0,0,0,0,15408,7504,0,0,0,0,16,0,0,0,0,0,0,0,0,1985

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+title_lines=`echo "$PWD/$1" | tr "/" "\n" | wc -l`
+fixed=''
+i=2
+while [ $i -le $title_lines ];do
+line=`echo "$PWD/$1" | tr "/" "\n" | head -$i | tail -1`
+fixed=`echo $fixed\\\/$line`
+#echo $fixed
+
+i=$((i+1))
+done
+
+title=$fixed
+
+if [ -n "$1" ];then
+  sed 's/xxxxxx/'$title'/g' /homes/nb605/Virtual_Time/java/bin/vtfVisualizer_template.html > /homes/nb605/Virtual_Time/java/bin/vtfVisualizer.html
+else 
+  echo 
+fi

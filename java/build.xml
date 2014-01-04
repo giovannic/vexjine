@@ -1,0 +1,1728 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<project default="validation_tests" basedir=".">
+	
+	<!-- USER SET PROPERTIES -->
+	<property name="base_dir" value="/homes/nb605/VTF/java" /> 
+	<property name="spec_src_dir" value="/data/SPECjvm2008/" /> 
+	<property name="statically_preinstrumented_system_classes_jar" value="vtf.jar" /> 
+	<property name="jine_agent" value="${base_dir}/lib/instrument.jar" /> 
+	<property name="vex_jvmti_agent" value="${base_dir}/lib/libJVMTIAgentpapi.so" /> 
+
+	<!-- COMPILATION TARGETS -->
+	<property name="lib" value="lib" /> 	
+	<property name="src" value="src" />
+	<property name="build.dir" value="bin"/>
+	<property name="bin" value="bin" /> 
+  	<property name="TALK" value="true" /> 
+
+	<path id="classpath.base">
+	</path>
+
+	<path id="classpath.static.instrumentation">
+		<pathelement location="{$lib}/asm-all-3.1.jar"/>
+	</path>
+
+	<path id="classpath.test">
+		<pathelement location="lib/junit.jar" />
+		<pathelement location="lib/junitperf-1.9.1.jar" />
+		<pathelement location="/usr/share/java/mysql.jar"/>
+		<pathelement location="bin" />
+		<path refid="classpath.base" />
+	</path>
+
+	<path id="project.class.path">
+		<fileset dir="${lib}">
+		<include name="bcel-5.2.jar"/>
+		<include name="asm-all-3.1.jar"/>
+		<include name="junit.jar" />
+		<include name="junitperf-1.9.1.jar" />
+		<include name="jmf.jar" />
+		</fileset>
+	</path>
+
+	<path id="spec.class.path">
+		<fileset dir="${spec_src_dir}/lib/">
+		<include name="ant.jar"/>
+		<include name="ant-launcher.jar"/>
+		<include name="check.jar"/>
+		<include name="derby.jar"/>
+		<include name="janino.jar"/>
+		<include name="javac.jar"/>
+		<include name="jcommon-1.0.9.jar"/>
+		<include name="jfreechart-1.0.5.jar"/>
+		<include name="jl1.0.jar"/>
+		<include name="sunflow.jar"/>
+		<include name="Tidy.jar"/>
+		<include name="xom-1.1.jar"/>
+		</fileset>
+	</path>
+
+	<target name="SPEC_compile">
+		<mkdir dir="${spec_src_dir}/${bin}"/>
+		<javac includeantruntime="false" srcdir="${spec_src_dir}/src/" destdir="${spec_src_dir}/bin/" debug="on" source="1.6">
+		<classpath refid="spec.class.path"/>
+		<classpath>
+		<pathelement path="${spec_src_dir}/bin/"/>
+		</classpath>
+		</javac>
+	</target>
+
+	<target name="checkversion">
+		<java classname="vtf_tests.CpuTest" fork="yes">
+
+		 <jvmarg value="-version" />
+		</java>
+	</target>
+
+	<target name="javac">
+		<mkdir dir="${bin}"/>
+		<javac includeantruntime="false" srcdir="${src}"
+		destdir="${bin}"
+		debug="on"
+		source="1.6">
+		<compilerarg value="-Xbootclasspath/p:vtfIO.jar"/>
+		<classpath refid="project.class.path"/>
+		<classpath>
+		<pathelement path="${lib}/vtfIO.jar"/>
+		</classpath>
+		</javac>
+	</target>
+
+
+	<target name="static_asm">
+		<mkdir dir="${bin}"/>
+		<javac includeantruntime="false" srcdir="${src}/staticinstrument/asm"
+		destdir="${bin}"
+		debug="on"
+		source="1.6">
+		<classpath refid="project.class.path"/>
+		</javac>
+	</target>
+
+
+	<target name="static_javac" depends="static_asm">
+		<mkdir dir="${bin}"/>
+		<javac includeantruntime="false" srcdir="${src}/staticinstrument"
+		destdir="${bin}"
+		debug="on"
+		source="1.6">
+		<classpath refid="project.class.path"/>
+		</javac>
+	</target>
+
+        <target name="staticinstrument_jar" depends="static_javac">
+                <jar destfile="${lib}/staticinstrument.jar" basedir="${bin}">
+                <include name="staticinstrument/StaticClassesToBePreloadedTransformer.class"/>
+                <include name="staticinstrument/asm/*.class"/>
+                <manifest>
+                <attribute name="Premain-Class" value="staticinstrument.StaticClassesToBePreloadedTransformer"/>
+                <attribute name="Can-Redefine-Classes" value="true"/>
+                <attribute name="Can-Retransform-Classes" value="true"/>
+                </manifest>
+                </jar>
+
+        </target>
+
+        <target name="create_static_classes" depends="staticinstrument_jar">
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=0" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=1" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=2" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=3" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=4" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=5" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=6" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=7" /> </java>
+	      <java classname="staticinstrument.StaticClassesToBePreloadedTransformer" fork="true"><classpath refid="project.class.path" /><jvmarg value="-javaagent:${lib}/staticinstrument.jar=8" /> </java>
+
+		<jar destfile="${lib}/vtfIO.jar" basedir=".">
+		<include name="java/lang/*.class"/>
+		<include name="java/io/*.class"/>
+		<include name="java/net/*.class"/>
+		</jar>
+
+		<jar destfile="vtfIO.jar" basedir=".">
+		<include name="java/lang/*.class"/>
+		<include name="java/io/*.class"/>
+		<include name="java/net/*.class"/>
+		</jar>
+	
+		<exec executable="rm"><arg value="-rf"/><arg value="java/"/></exec>
+                <antcall target="javac" />
+	</target>
+
+	<target name="instrument_jar" depends="javac">
+		<jar destfile="${lib}/instrument.jar" basedir="${bin}">
+		<include name="virtualtime/*.class"/>
+		<include name="virtualtime/asm/*.class"/>
+		<include name="virtualtime/generators/*.class"/>
+		<include name="virtualtime/debugging/*.class"/>
+		<include name="virtualtime/statistics/*.class"/>
+		<manifest>
+		<attribute name="Premain-Class" value="virtualtime.ClassTransformer"/>
+		<attribute name="Can-Redefine-Classes" value="true"/>
+		<attribute name="Can-Retransform-Classes" value="true"/>
+		</manifest>
+		</jar>
+
+		<zip destfile="${statically_preinstrumented_system_classes_jar}">
+			<zipgroupfileset dir="${lib}" includes="instrument.jar vtfIO.jar asm-all-3.1.jar" />
+		</zip>
+
+	</target>
+
+	<!--- Test 0: Profile host to create delays file .vex_delays -->
+        <target name="profile" depends="javac">
+	        <property name="type" value="min"/>
+		<java classname="vtf_tests.CpuTest" fork="yes">
+			<classpath refid="classpath.test" />
+			<jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+			<jvmarg value="-javaagent:${jine_agent}=profileHost=${type}"/>
+			<jvmarg value="-agentpath:${vex_jvmti_agent}"/>
+			<arg value="1"/>
+			<arg value="parloopsj"/>
+			<arg value="1"/>
+			<arg value="1"/>
+		</java>
+	</target>
+
+
+	<!--- Test 1: S C A L A B I L I T Y    T E S T S -->
+        <target name="scalability_aff" depends="javac">
+           <property name="threads" value="32"/>
+	   <java classname="vtf_tests.CpuTest" fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-agentpath:/homes/nb605/VTF/src/jvm_affinity/libAffinityJvm.so=${cores}" />
+	      <arg value="1"/>
+	      <arg value="parloopsj"/>
+	      <arg value="10000000"/>
+	      <arg value="${threads}"/>
+	</java>
+        </target>
+
+        <target name="scalability_real" depends="javac">
+           <property name="threads" value="32"/>
+	   <java classname="vtf_tests.CpuTest" fork="yes">
+	      <classpath refid="classpath.test" />
+	      <arg value="1"/>
+	      <arg value="parloopsj"/>
+	      <arg value="20000000"/>
+	      <arg value="${threads}"/>
+	</java>
+        </target>
+
+        <target name="scalability" depends="javac">
+           <property name="cores" value="1"/>
+           <property name="threads" value="32"/>
+	   <java classname="vtf_tests.CpuTest" fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,cpus=${cores},timeslot=10"/>
+	      <arg value="1"/>
+	      <arg value="parloopsj"/>
+	      <arg value="20000000"/>
+	      <arg value="${threads}"/>
+	</java>
+        </target>
+
+        <target name="scalability_acc" depends="javac">
+           <property name="cores" value="1"/>
+           <property name="threads" value="32"/>
+	   <java classname="vtf_tests.CpuTest" fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}=adaptedMethods=adascalability"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,cpus=${cores},timeslot=10"/>
+	      <arg value="1"/>
+	      <arg value="parloopsj"/>
+	      <arg value="20000000"/>
+	      <arg value="${threads}"/>
+	</java>
+        </target>
+
+
+
+	<!--- Test 2: M M 1	T E S T S -->
+        <target name="mm1" depends="javac">
+            <property name="cores" value="1"/>
+            <property name="timeslot" value="10"/>
+            <property name="vex_options" value="cpus=${cores}"/>
+            <echo message="cores: ${cores} timeslot: ${timeslot} vex_options: ${vex_options}"/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=${timeslot},${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.ServerClientTest" />
+            </junit>
+        </target>
+
+
+	<!--- Test 3: R E G R E S S I O N	T E S T S: Test all combinations for MULTI-THREADED {LOOPS}x{ACC(LOOPS)}x{MODELxSLEEP} FOR MULTICORE -->
+        <target name="regress_basic" depends="javac">
+		<java classname="vtf_tests.modelLoops.tests.TestBasicFunc">
+		      <classpath refid="classpath.test" />
+		</java>
+	</target>
+
+        <target name="regress" depends="javac">
+	    <property name="cores" value="2"/>
+	    <property name="timeslot" value="10"/>
+	    <property name="vex_options" value="model_scheduler_sim,cpus=${cores}"/>
+	    <echo message="${cores} ${timeslot}: ${vex_options}"/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+ 		<sysproperty key="cores" value="${cores}"/>
+                <sysproperty key="time_per_thread" value="${time_per_thread}"/>
+                <sysproperty key="threads" value="${threads}"/>
+		      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+		      <jvmarg value="-javaagent:${jine_agent}"/>
+		      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=${timeslot},${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.modelLoops.tests.TestBasicFunc" />
+            </junit>
+        </target>
+
+
+	<!--- Test 4: ACCELERATION TESTS -->
+        <target name="acceleration_test_real" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.AccelerationTest" />
+            </junit>
+        </target>
+
+        <target name="acceleration_test" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,visualize"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.AccelerationTest" />
+            </junit>
+        </target>
+
+        <target name="acceleration_test_multi" depends="javac">
+	    <property name="cores" value="2"/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,cpus=${cores}"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.AccelerationTest" />
+            </junit>
+        </target>
+
+
+        <target name="acceleration_test_spex" depends="javac">
+	    <property name="cores" value="2"/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,cpus=${cores},spex"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.AccelerationTest" />
+            </junit>
+        </target>
+
+
+<!--
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+
+	   
+	      <jvmarg value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+
+-->
+       <!--  Test 5: M O D E L		D B	D E M O  -->
+       <target name="demo_all" depends="javac">
+	       <property name="vex_options" value=""/>
+	       <echo message="------------------- DEMO ALL (REMOTE): ${vex_options} ---------------"/>
+		<antcall target="demo"/>
+<!--
+		<antcall target="demo_with_insert"/>
+-->
+		<antcall target="demo_real"/>
+
+
+	</target>
+
+        <target name="demo_all_local" depends="javac">
+	       <property name="vex_options" value=""/>
+	       <echo message="------------------- DEMO ALL (LOCAL): ${vex_options} ---------------"/>
+		<antcall target="demo_local"/>
+		<antcall target="demo_with_insert_local"/>
+		<antcall target="demo_real_local"/>
+	</target>
+
+
+	<target name="demo_micro" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+
+  	    <property name="vex_options" value=""/>
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+	  <exec executable="date">
+	  </exec>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+              <formatter type="brief" usefile="false" />
+
+<!--	      <test name="vtf_tests.demo.tests.TestCacheImplOnlyFailing" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" /> 
+              <test name="vtf_tests.demo.tests.TestCacheImplOnly" /> 
+              <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" /> 
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyWithInsert" />  -->
+
+              <test name="vtf_tests.demo.tests.TestCacheImplOnly" /> 
+            </junit>
+        </target>
+
+
+
+	<target name="demo_model_empty_full" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+
+  	    <property name="vex_options" value=""/>
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+	  <exec executable="date">
+	  </exec>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.demo.tests.TestEmpty" />
+            </junit>
+        </target>
+
+
+	<target name="demo_model_full" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+
+  	    <property name="vex_options" value=""/>
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+	  <exec executable="date">
+	  </exec>
+  	    <property name="cacheSize" value="39"/>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnly" /> 
+            </junit>
+        </target>
+
+
+
+        <target name="demo_real_full" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+              <formatter type="brief" usefile="false" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+<!--
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+	<target name="demo_vex_full" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+
+  	    <property name="vex_options" value=""/>
+	  <exec executable="date">
+	  </exec>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" /> 
+            </junit>
+        </target>
+
+
+
+        <target name="demo_real_insert" depends="javac">
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+            </junit>
+        </target>
+
+
+	<target name="demo_insert_empty" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+	  <exec executable="date">
+	  </exec>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DcacheSize=${cacheSize} ${timers}"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.demo.tests.TestEmptyWithInsert" />
+
+            </junit>
+        </target>
+
+
+	<target name="demo_failing_varcache" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+  	    <property name="cacheSize" value="13"/>
+  	    <property name="vex_options" value=""/>
+	  <exec executable="date">
+	  </exec>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.demo.tests.TestEmptyWithInsert" />
+
+            </junit>
+        </target>
+
+
+
+
+
+	<target name="demo_insert_model" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+
+	  <exec executable="date">
+	  </exec>
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DcacheSize=${cacheSize} ${timers}"/>
+              <formatter type="brief" usefile="false" />
+
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyWithInsert" />  
+            </junit>
+        </target>
+
+	<target name="demo_insert_vex_full" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+            <property name="vex_options" value=""/>
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+	  <exec executable="date">
+	  </exec>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+	      <jvmarg value="-DcacheSize=${cacheSize} ${timers}"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" /> 
+
+            </junit>
+        </target>
+
+
+
+
+        <target name="demo" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>	
+     
+            <property name="vex_options" value=""/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+
+              <test name="vtf_tests.demo.tests.TestEmpty" />
+              <test name="vtf_tests.demo.tests.TestRealClientToModel" />
+<!--
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyFailing" />
+-->
+              <test name="vtf_tests.demo.tests.TestCacheImplOnly" />
+<!--
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+-->
+
+            </junit>
+        </target>
+
+
+
+
+        <target name="demo_target_to_keep_garbage" depends="javac">
+		  <exec executable="cp">
+		    <arg value="/data/vtf_time_stats.csv"/>
+		    <arg value="/data/vtf_time_stats_ant1.csv"/>
+		  </exec>		
+	</target>
+
+
+
+        <target name="demo_with_insert" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="remote"/>
+	    </exec>		
+
+	    <exec executable="ulimit">
+	       <arg value="-n"/>
+	       <arg value="256000"/>
+	    </exec>	
+
+            <property name="vex_options" value=""/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+
+              <test name="vtf_tests.demo.tests.TestEmptyWithInsert" />
+              <test name="vtf_tests.demo.tests.TestRealClientToModelWithInsert" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyFailingWithInsert" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyWithInsert" />
+              <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+            </junit>
+        </target>
+
+
+
+        <target name="demo_local" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="local"/>
+	    </exec>	
+            <property name="vex_options" value=""/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+
+              <test name="vtf_tests.demo.tests.TestEmpty" />
+              <test name="vtf_tests.demo.tests.TestRealClientToModel" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyFailing" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnly" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithLocalMySql" />
+            </junit>
+        </target>
+
+        <target name="demo_with_insert_local" depends="javac">
+	    <exec executable="/homes/nb605/VTF/src/models/switchdemoto">
+	       <arg value="local"/>
+	    </exec>		
+            <property name="vex_options" value=""/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+
+              <test name="vtf_tests.demo.tests.TestEmptyWithInsert" />
+              <test name="vtf_tests.demo.tests.TestRealClientToModelWithInsert" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyFailingWithInsert" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyWithInsert" />
+              <test name="vtf_tests.demo.tests.TestCompleteWithLocalMySqlWithInsert" />
+            </junit>
+        </target>
+
+
+
+
+        <target name="demo_insert_real_cache_probing" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+<!--
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+
+	      <jvmarg value="-DlogToFile=true"/>
+
+-->
+            </junit>
+        </target>
+
+	<target name="demo_insert_model_cache_probing" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+            <property name="vex_options" value=""/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.demo.tests.TestCacheImplOnlyWithInsert" />
+
+<!--	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+
+
+        <target name="demo_empty_cache_probing" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10"/>
+              <formatter type="brief" usefile="false" />
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+              <test name="vtf_tests.demo.tests.TestEmpty" />
+<!--
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+        <target name="demo_semiempty_cache_probing" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10"/>
+
+              <formatter type="brief" usefile="false" />
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+              <test name="vtf_tests.demo.tests.TestRealClientToModel" />
+<!--
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+
+        <target name="demo_real_cache_probing" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+              <formatter type="brief" usefile="false" />
+<!--
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+-->
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+<!--
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+
+	<target name="demo_model_cache_probing" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=1"/>
+              <formatter type="brief" usefile="false" />
+<!--
+
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+-->
+              <test name="vtf_tests.demo.tests.TestCacheImplOnly" />
+
+<!--
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+
+	<target name="demo_vex_cache_probing" depends="javac">
+  	    <property name="cacheSize" value="39"/>
+            <property name="vex_options" value=""/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-DcacheSize=${cacheSize}"/>
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=1,${vex_options}"/>
+              <formatter type="brief" usefile="false" />
+	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+	      <jvmarg value="-DlogToFile=true"/>
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+
+<!--	      <jvmarg value="-DtimeServer=true"/>
+	      <jvmarg value="-DtimeThink=true"/>
+	      <jvmarg value="-DrequestStart=true"/>
+
+	      <jvmarg value="-DlogToFile=true"/>
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+        <target name="demo_real" depends="javac">
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+<!--
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySqlWithInsert" />
+-->
+            </junit>
+        </target>
+
+        <target name="demo_real_local" depends="javac">
+
+  	    <property name="timers" value="-DtimeServer=true -DtimeThink=true -DrequestStart=true -DlogToFile=true"/>
+
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.demo.tests.TestCompleteWithLocalMySql" />
+              <test name="vtf_tests.demo.tests.TestCompleteWithLocalMySqlWithInsert" />        
+	    </junit>
+        </target>
+
+        <target name="demo_profile" depends="javac">
+	      <java classname="vtf_tests.demo.SqlDriverInfo" classpath="bin" fork="true">
+		      <classpath refid="classpath.test" />
+		      <arg value="3000"/>
+		      <arg value="remote"/>
+  	      </java>
+        </target>
+
+        <target name="demo_profile_local" depends="javac">
+	      <java classname="vtf_tests.demo.SqlDriverInfo" classpath="bin" fork="true">
+		      <classpath refid="classpath.test" />
+		      <arg value="500"/>
+		      <arg value="local"/>
+  	      </java>
+        </target>
+
+
+
+
+	<!--  Test 6: D I S K	I/O	T E S T S -->
+        <target name="disk_io_real" depends="javac">
+           <property name="fileCatalogue" value="vexIoTestsExtFileCatalogue"/>
+           <property name="threads" value="1"/>
+           <property name="iterations" value="200"/>
+           <property name="catalogue" value="memory"/>
+	   <java classname="vtf_tests.LocalFileServer" fork="yes">
+	      <classpath refid="classpath.test" />
+	      <arg value="${fileCatalogue}"/>
+	      <arg value="${catalogue}"/>
+	      <arg value="${iterations}"/>
+	      <arg value="${threads}"/>
+	</java>
+        </target>
+
+        <target name="disk_io" depends="javac">
+           <property name="fileCatalogue" value="vexIoTestsExtFileCatalogue"/>
+           <property name="threads" value="1"/>
+           <property name="iterations" value="200"/>
+           <property name="cores" value="1"/>
+           <property name="timeslot" value="100"/>
+           <property name="iomethod" value="io=normal"/>
+           <property name="catalogue" value="memory"/>
+	   <java classname="vtf_tests.LocalFileServer" fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=${iomethod},output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=${timeslot},cpus=${cores}"/>
+	      <arg value="${fileCatalogue}"/>
+	      <arg value="${catalogue}"/>
+	      <arg value="${iterations}"/>
+	      <arg value="${threads}"/>
+	</java>
+        </target>
+
+
+	<!--  Test 7: N E T W O R K 	I/O	T E S T S -->
+        <target name="network_io_real" depends="javac">
+           <property name="queries" value="50"/>
+           <property name="threads" value="16"/>
+	   <property name="interarrivalThinkingTime" value="1" />
+	   <java classname="vtf_tests.IoTest" fork="yes">
+ 	      <sysproperty key="driver" value="remotemysql"/>
+              <sysproperty key="remotehost" value="irmabunt"/>
+	      <classpath refid="classpath.test" />
+	      <arg value="${queries}"/>
+	      <arg value="${threads}"/>
+	      <arg value="${interarrivalThinkingTime}"/>
+
+   	   </java>
+        </target>
+
+
+        <target name="network_io" depends="javac">
+           <property name="queries" value="50"/>
+           <property name="threads" value="16"/>
+	   <property name="interarrivalThinkingTime" value="1" />
+           <property name="cores" value="1"/>
+           <property name="timeslot" value="100"/>
+           <property name="iomethod" value="io=normal"/>
+	   <java classname="vtf_tests.IoTest" fork="yes">
+ 	      <sysproperty key="driver" value="remotemysql"/>
+              <sysproperty key="remotehost" value="irmabunt"/>
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=${io},output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=${timeslot},cpus=${cores}"/>
+	      <arg value="${queries}"/>
+	      <arg value="${threads}"/>
+	      <arg value="${interarrivalThinkingTime}"/>
+
+   	   </java>
+        </target>
+
+
+
+	<!-- T E S T S -->
+	<target name="validation_tests" depends="instrument_jar">
+<!--		
+		<antcall target="validate_time_wait"/> 
+		<antcall target="validate_sleep"/>
+-->		
+	</target>
+
+
+	<target name="validate" depends="instrument_jar">
+
+<!--		
+		<antcall target="regress"/>
+		<antcall target="acceleration_test"/>
+		<antcall target="acceleration_test_multi"/>
+		<antcall target="acceleration_test_spex"/>
+-->		
+		<antcall target="io_db" />
+		<antcall target="io_db_accelerated" />
+		<antcall target="io_db_multi" />
+		<antcall target="io_db_spex" />
+<!--
+		<antcall target="mm1" />
+-->
+		<property name="vex_options" value="cpus=2"/>
+		<antcall target="demo_all" />
+		<antcall target="demo_all_local" />
+
+	</target>
+
+	<!--  BASIC VIRTUAL TIME TESTS -->
+	<target name="validate_time_wait" depends="instrument_jar">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01"/>
+
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.validation.TimedWaitingTest" />
+            </junit>
+	</target>
+
+	<target name="validate_sleep" depends="instrument_jar">
+          <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.validation.SleepingTest" />
+            </junit>
+	</target>
+
+
+
+
+
+
+	<!-- SPEC TESTS -->
+        <target name="specsingle">
+		<antcall target="specregress_single_mid" />
+	    <exec executable="./stoptest" />
+		<antcall target="specregress_single_high" />
+	    <exec executable="./stoptest" />
+	</target>
+
+
+        <target name="specregress">
+		<antcall target="specregress_single" />
+		<antcall target="specregress_multi" />
+		<antcall target="specregress_spex" />
+	</target>
+
+        <target name="specregress_single">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress"/>
+		<arg value="-O"/>
+		<arg value="-o"/>
+		<arg value="stack_trace_mode"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i3"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+        <target name="specregress_multi">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_loose"/>
+		<arg value="-uspecregress"/>
+		<arg value="-C"/>
+		<arg value="-O"/>
+		<arg value="-o"/>
+		<arg value="cpus=2,stack_trace_based"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i3"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+        <target name="specregress_spex">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_spex"/>
+		<arg value="-uspecregress"/>
+		<arg value="-C"/>
+		<arg value="-O"/>
+		<arg value="-o"/>
+		<arg value="spex,cpus=2,stack_trace_based"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i3"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+
+
+
+        <target name="specregress_mid">
+		<antcall target="specregress_single_mid" />
+		<antcall target="specregress_multi_mid" />
+		<antcall target="specregress_spex_mid" />
+	</target>
+
+<!--
+		<arg value="-j"/>
+		<arg value="-Dspecjvm.home.dir=../benchmarks/SPECjvm2008/"/>
+-->
+        <target name="specregress_single_mid">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-o"/>
+		<arg value="timeslot=10,stack_trace_mode"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="ttt_specregress_single_mid_stack_enabled">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-o"/>
+		<arg value="timeslot=10,stack_trace_mode"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="ttt_specregress_single_mid_pollnw_enabled">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-o"/>
+		<arg value="poll_nw"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="ttt_specregress_single_mid_onlymethod">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+	<!-- NEVER METHODFILE WITHOUT POLL_NW -->
+        <target name="ttt_specregress_single_mid_methodfile_enabled">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-A" />
+		<arg value="methodFile=specMethodFile" />
+		<arg value="-o" />
+		<arg value="timeslot=10,poll_nw" />
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="ttt_specregress_single_mid_externalinstrumentation">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-A" />
+		<arg value="externalInstrumentation" />
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="ttt_specregress_single_no_scheduling">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-o"/>
+		<arg value="no_scheduling"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+
+        <target name="specregress_single_midshort">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-j"/>
+		<arg value="-Dspecjvm.home.dir=../benchmarks/SPECjvm2008/"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-O" />
+		<arg value="-i 1"/>
+		<arg value="-a"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+        <target name="specregress_multi_mid">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_loose"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-C"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i1"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+<!--
+		<arg value="-j"/>
+		<arg value="-Dspecjvm.home.dir=../benchmarks/SPECjvm2008/"/>
+-->
+        <target name="specregress_spex_mid">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-C"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i1"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+
+
+
+
+        <target name="specregress_high">
+		<antcall target="specregress_single_high" />
+		<antcall target="specregress_multi_high" />
+		<antcall target="specregress_spex_high" />
+	</target>
+
+<!--
+		<arg value="-j"/>
+		<arg value="-Dspecjvm.home.dir=../benchmarks/SPECjvm2008/"/>
+-->
+
+        <target name="ttt_specregress_single_high">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_high"/>
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-o"/>
+		<arg value="timeslot=10"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="ttt_specregress_single_high_pollnw">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_high"/>
+		<arg value="-i1"/>
+		<arg value="-a"/>
+		<arg value="-o"/>
+		<arg value="poll_nw"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="specregress_multi_high">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_loose"/>
+		<arg value="-uspecregress_high"/>
+		<arg value="-j"/>
+		<arg value="-Dspecjvm.home.dir=../benchmarks/SPECjvm2008/"/>
+		<arg value="-C"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i1"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+        <target name="specregress_spex_high">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_regression_single"/>
+		<arg value="-uspecregress_high"/>
+		<arg value="-j"/>
+		<arg value="-Dspecjvm.home.dir=../benchmarks/SPECjvm2008/"/>
+		<arg value="-C"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i1"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+	<!-- DACAPO TESTS -->
+        <target name="dacaporegress">
+		<antcall target="dacaporegress_single" />
+		<antcall target="dacaporegress_multi" />
+		<antcall target="dacaporegress_spex" />
+	</target>
+
+
+	<!-- JYTHON -s 6 DOES 16K SECONDS TO RUN ALWAYS EXCLUDE -->
+        <target name="dacaporegress_single">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-ldacapo_regression_single"/>
+		<arg value="-udacaporegress"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-O"/>
+		<arg value="-i1"/>
+		<arg value="-o"/>
+		<arg value="timeslot=10"/>
+		<arg value="-f7"/>
+		<arg value="-t10"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+        <target name="ttt_dacaporegress_single_1">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-ldacapo_regression_single"/>
+		<arg value="-udacaporegress"/>
+		<arg value="-o"/>
+		<arg value="timeslot=10"/>
+		<arg value="-i2"/>
+		<arg value="-f3"/>
+		<arg value="-t6"/>
+		<arg value="-P"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="ttt_dacaporegress_single2">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-ldacapo_regression_single"/>
+		<arg value="-udacaporegress"/>
+		<arg value="-o"/>
+		<arg value="timeslot=10"/>
+		<arg value="-i2"/>
+		<arg value="-f7"/>
+		<arg value="-t10"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+        <target name="dacaporegress_multi">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-ldacapo_regression_loose"/>
+		<arg value="-udacaporegress"/>
+		<arg value="-C"/>
+		<arg value="-O"/>
+		<arg value="-o"/>
+		<arg value="cpus=2"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i1"/>
+	    </exec>
+
+	    <exec executable="date" />
+        </target>
+        <target name="dacaporegress_loose">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-ldacapo_regression_single"/>
+		<arg value="-udacaporegress"/>
+		<arg value="-C"/>
+		<arg value="-O"/>
+		<arg value="-o"/>
+		<arg value="cpus=2"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i1"/>
+		<arg value="-f5"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+        <target name="dacaporegress_spex">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-ldacapo_regression_single"/>
+		<arg value="-udacaporegress"/>
+		<arg value="-C"/>
+		<arg value="-O"/>
+		<arg value="-o"/>
+		<arg value="cpus=2,stack_trace_mode,spex,timeslot=10"/>
+		<arg value="-A" />
+		<arg value="adaptiveProfiling=10000"/>
+		<arg value="-i1"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+
+	<!-- I/O -->
+        <target name="io_db" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+            </junit>
+        </target>
+
+        <target name="io_db_model" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,rts_file=rts_model"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+            </junit>
+        </target>
+
+        <target name="io_db_accelerated" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Daccelerated"/>
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+            </junit>
+        </target>
+
+
+
+        <target name="io_db_multi" depends="javac">
+	    <property name="cores" value="2"/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,cpus=${cores}"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+            </junit>
+        </target>
+
+        <target name="io_db_spex" depends="javac">
+	    <property name="cores" value="2"/>
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10,cpus=${cores},spex"/>
+              <formatter type="brief" usefile="false" />
+	      <test name="vtf_tests.demo.tests.TestCompleteWithMySql" />
+            </junit>
+        </target>
+
+
+
+ 	<!-- OLD CURRENTLY UNUSED TESTS -->
+        <target name="timetestmodelserv_real" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.serverClientTest.tests.TimeTestModelledServerMM1" />
+            </junit>
+        </target>
+
+        <target name="timetestmodelserv_vex" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=10"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.serverClientTest.tests.TimeTestModelledServerMM1" />
+            </junit>
+        </target>
+
+        <target name="timetestmodelserv_vex100" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=100"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.serverClientTest.tests.TimeTestModelledServerMM1" />
+            </junit>
+        </target>
+
+        <target name="timetestmodelserv_vex5" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,timeslot=5"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.serverClientTest.tests.TimeTestModelledServerMM1" />
+            </junit>
+        </target>
+
+
+
+        <target name="junitloops_real" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.JUnitPerfLoopsTester" />
+            </junit>
+        </target>
+
+
+        <target name="junitloops_vex" depends="javac">
+            <junit fork="yes">
+	      <classpath refid="classpath.test" />
+	      <jvmarg value="-Xbootclasspath/p:${statically_preinstrumented_system_classes_jar}"/>
+	      <jvmarg value="-javaagent:${jine_agent}"/>
+	      <jvmarg value="-agentpath:${vex_jvmti_agent}=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01"/>
+              <formatter type="brief" usefile="false" />
+              <test name="vtf_tests.JUnitPerfLoopsTester" />
+            </junit>
+        </target>
+
+	<target name="clean">
+		<delete dir="build" />
+	</target>
+
+	<target name="custominstr_jar" >
+		<jar destfile="${lib}/custominstr.jar" basedir="${bin}">
+		<include name="customadapter/*.class"/>
+		<manifest>
+		<attribute name="Premain-Class" value="customadapter.ClassTransformer"/>
+		<attribute name="Can-Redefine-Classes" value="true"/>
+		<attribute name="Can-Retransform-Classes" value="true"/>
+		</manifest>
+		</jar>
+	</target>
+
+
+
+
+ 	<!-- THESIS OFFICIAL SPEC -->
+        <target name="official_specregress_iothreshold_enabled">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_specregress_iothreshold_enabled"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-O" />
+		<arg value="-i2"/>
+		<arg value="-a"/>
+		<arg value="-o"/>
+		<arg value="iothreshold=50000"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+        <target name="official_specregress_single_mid_methodfile_enabled">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_single_mid_methodfile_enabled"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-O" />
+		<arg value="-A" />
+		<arg value="methodFile=specMethodFile" />
+		<arg value="-i2"/>
+		<arg value="-a"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+        <target name="official_specregress_single_mid_externalinstrumentation">
+	    <exec executable="./enable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_single_mid_externalinstrumentation"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-A" />
+		<arg value="externalInstrumentation" />
+		<arg value="-O" />
+		<arg value="-i2"/>
+		<arg value="-a"/>
+		<arg value="-v"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+        <target name="official_specregress_single_mid_huge_heap">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_single_mid_huge_heap"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-j" />
+		<arg value="-XX:MinHeapFreeRatio=1 -XX:MaxHeapFreeRatio=2 -Xms2048m -Xmx2096m" />
+		<arg value="-O" />
+		<arg value="-o" />
+		<arg value="timeslot=10" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+        <target name="official_specregress_single_mid_aggressive_opts">
+	    <exec executable="./disable_cpu1" />
+	    <exec executable="date" />
+	    <exec executable="./vtftest">
+		<arg value="-lspec_single_mid_aggressive_opts"/>
+		<arg value="-uspecregress_mid"/>
+		<arg value="-j" />
+		<arg value="-XX:+AggressiveOpts" />
+		<arg value="-O" />
+		<arg value="-i1"/>
+		<arg value="-a"/>
+	    </exec>
+	    <exec executable="date" />
+        </target>
+
+
+</project>

@@ -1,0 +1,33 @@
+######### JINE HIGH LEVEL INSTALLATION #########
+1. If you do not want to use a different JVM than the system's default then go immediately to step 2. Otherwise:
+	a. Export the executable of the JVM you want to use to ant via the JAVACMD environmental variable:
+
+		export JAVACMD=<path to java executable in custom JVM installation>
+			Example: export JAVACMD=/data/myjava/bin/java
+
+	b. Verify that "ant" will use the set JVM by typing:
+	
+		ant checkversion 
+
+
+2. Create the statically instrumented classes for this and only this specific JVM:
+
+	ant create_static_classes
+
+
+3. Create all classes
+
+	ant
+
+
+You have created the statically instrumented library "./vtf.jar" and the Java agent "./lib/instrument.jar".
+Now running a Java program like:
+	java -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar -agentpath:lib/libJVMTIAgent.so Main
+
+runs the program in Virtual Time. 
+
+For JINE options give:
+	java -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=help -agentpath:lib/libJVMTIAgent.so Main
+
+For JINE-VEX options give: 
+	java -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar -agentpath:lib/libJVMTIAgent.so=help Main

@@ -1,0 +1,43 @@
+I/O Parameters Examples
+=======================
+
+PARSING protocol-normal|prediction-median|buffer-16|level-invpoint|stats-invpoint
+--------------------------------------
+Protocol: Normal
+Prediction: Median Cyclic Buffer 16
+Level: invpoint
+Filtering: NO
+Logging: YES
+ImportPrefix: NO
+--------------------------------------
+
+PARSING protocol-lax|prediction-sampling|buffer-64|level-global|recogn_random-75|stats-global
+--------------------------------------
+Protocol: Lax
+Prediction: Sampling Cyclic Buffer 64
+Level: global
+Filtering: YES
+Logging: NO
+ImportPrefix: NO
+--------------------------------------
+
+PARSING protocol-serial|level-ioop|prediction-cmean|buffer-128|recogn_thresh-1000000
+--------------------------------------
+Protocol: Serial
+Prediction: Constant mean
+Level: ioop
+Filtering: YES
+Logging: NO
+ImportPrefix: NO
+--------------------------------------
+
+PARSING buffer-64|protocol-lax|level-global|prediction-aryulwalk|importPrefix-/data/files_previously-exported
+--------------------------------------
+Protocol: Lax
+Prediction: Auto-Regression (Yules-Walker) Cyclic Buffer 64
+Level: global
+Filtering: NO
+Logging: NO
+ImportPrefix: /data/files_previously-exported
+--------------------------------------
+

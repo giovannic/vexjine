@@ -1,0 +1,173 @@
+########################
+#### MAKEFILE SETUP ####
+########################
+
+SHELL=/bin/sh
+
+CC=@CXX@
+
+DBGFLAGS=-O0 -g3 -Wall @logging_mode@ 
+RELEASEFLAGS=-O3 -Wall @logging_mode@ -DNDEBUG=1 
+
+CFLAGS=$(@compiler_mode@FLAGS)
+LDFLAGS=$(@compiler_mode@FLAGS) -shared -fPIC
+
+INCLUDE_DIRS=-I$(VEX_DIR)/ -I$(VEX_DIR)/debugging -I$(VEX_DIR)/ds -I$(VEX_DIR)/events -I$(VEX_DIR)/io -I$(VEX_DIR)/profiler -I$(VEX_DIR)/registries -I$(VEX_DIR)/scheduler -I$(VEX_DIR)/threads -I$(VEX_DIR)/timer 
+
+ifeq "@compiler_mode@" "DBG"
+CPPFLAGS=-DGDB_USAGE=1 
+else
+CPPFLAGS=
+endif
+
+VEX_SUITE_ROOT=@rootdir_vex@
+VEX_DIR=$(VEX_SUITE_ROOT)/src/vex
+VEX_LIBRARY_NAME=$(VEX_DIR)/libvex.so
+VEX_LIBRARY=-L$(VEX_DIR) -lvex
+VEX_WLRPATHS=-Wl,-rpath,$(VEX_DIR) -Wl,-rpath-link,$(VEX_DIR)
+
+LDLIBS=-lpthread -lcinqs -lm -lrt
+LDDIRS=-L$(VEX_SUITE_ROOT)/src/cinqs/ -Wl,-rpath,$(VEX_SUITE_ROOT)/src/cinqs/ -Wl,-rpath-link,$(VEX_SUITE_ROOT)/src/cinqs/
+
+
+######## LIBUNWIND ########
+LIBUNWIND_PRESENT=@libunwind_present@
+ifeq "$(LIBUNWIND_PRESENT)" "yes"
+LIBUNWIND_DIR=@with_libunwind@
+#### IF LIBUNW NOT PRESENT BUT PRESENT
+ifneq "$(LIBUNWIND_DIR)" ""
+LIBUNWIND_LDDIRS=-L$(LIBUNWIND_DIR)/src/.libs
+LIBUNWIND_WLRPATHS=-Wl,-rpath,$(LIBUNWIND_DIR)/src/.libs/ -Wl,-rpath-link,$(LIBUNWIND_DIR)/src/.libs/
+LDDIRS+=$(LIBUNWIND_LDDIRS) $(LIBUNWIND_WLRPATHS)
+INCLUDE_DIRS+=-I$(LIBUNWIND_DIR)/include/
+endif
+#### IF LIBUNW AVAILABLE ONE WAY OR ANOTHER
+LDLIBS+=-lunwind-x86_64 
+CPPFLAGS+=-DUSING_LIBUNWIND=1
+endif
+
+
+######## GSL ########
+LIBGSL_PRESENT=@libgsl_present@
+ifeq "$(LIBGSL_PRESENT)" "yes"
+#### IF GSL NOT PRESENT BUT PRESENT
+LIBGSL_DIR=@with_libgsl@
+#### IF LIBUNW NOT PRESENT BUT PRESENT
+ifneq "$(LIBGSL_DIR)" ""
+LIBGSL_LDDIRS=-L$(LIBGSL_DIR)/.libs -L$(LIBGSL_DIR)/cblas/.libs/
+LIBGSL_WLRPATHS=-Wl,-rpath-link,$(LIBGSL_DIR)/.libs -Wl,-rpath,$(LIBGSL_DIR)/.libs
+LDDIRS+=$(LIBGSL_LDDIRS) $(LIBGSL_WLRPATHS)
+INCLUDE_DIRS+=-I$(LIBGSL_LDDIRS)/
+endif
+#### IF GSL AVAILABLE ONE WAY OR ANOTHER
+LDLIBS+=-lgsl -lgslcblas 
+CPPFLAGS+=-DUSING_GSL=1
+endif
+
+
+######## PERFCTR (NEEDS KERNEL PATCH) ########
+LIBPERFCTR_PRESENT=@libperfctr_present@
+ifeq "$(LIBPERFCTR_PRESENT)" "yes"
+LIBPERFCTR_DIR=@with_libperfctr@
+ifneq "$(LIBPERFCTR_DIR)" ""
+LIBPERFCTR_LDDIRS=-L$(LIBPERFCTR_DIR)/ -L$(VEX_SUITE_ROOT)/src/perfctr/ 
+LIBPERFCTR_WLRPATHS=-Wl,-rpath,$(VEX_SUITE_ROOT)/src/perfctr/ -Wl,-rpath-link,$(VEX_SUITE_ROOT)/src/perfctr/
+INCLUDE_DIRS+=-I$(LIBPERFCTR_DIR)/usr.lib/
+endif
+endif
+
+
+######## PAPI ########
+LIBPAPI_PRESENT=@libpapi_present@
+ifeq "$(LIBPAPI_PRESENT)" "yes"
+LIBPAPI_DIR=@with_libpapi@
+ifneq "$(LIBPAPI_DIR)" ""
+LIBPAPI_LDDIRS=-L$(LIBPAPI_DIR)/src/ -L$(LIBPAPI_DIR)/src/libpfm-3.y/lib 
+LIBPAPI_WLRPATHS=-Wl,-rpath-link,$(LIBPAPI_DIR)/src/  -Wl,-rpath-link,$(LIBPAPI_DIR)/src/libpfm-3.y/lib -Wl,-rpath,$(LIBPAPI_DIR)/src/ -Wl,-rpath,$(LIBPAPI_DIR)/src/libpfm-3.y/lib
+INCLUDE_DIRS+=-I$(LIBPAPI_DIR)/src/ 
+endif
+
+######## If PAPI is present you can compile and use the PAPI profiler ########
+COMPILE_PAPIPROFILER=yes
+LIBPAPIPROFILER_DIR=$(VEX_SUITE_ROOT)/src/profiler/
+LIBPAPIPROFILER_LDDIRS=-L$(LIBPAPIPROFILER_DIR)
+LIBPAPIPROFILER_WLRPATHS=-Wl,-rpath-link,$(VEX_SUITE_ROOT)/src/profiler/  -Wl,-rpath,$(VEX_SUITE_ROOT)/src/profiler/
+LDDIRS+=$(LIBPAPIPROFILER_LDDIRS) $(LIBPAPIPROFILER_WLRPATHS)
+LDLIBS+=-lpapiprofiler
+CPPFLAGS+=-DUSING_PAPIPROFILER=1
+INCLUDE_PAPIPROFILER_DIR=-I$(VEX_SUITE_ROOT)/src/profiler
+
+endif
+
+
+######## TIMER SELECTION ########
+### Default selection order according to library presence
+ifeq "$(LIBPERFCTR_PRESENT)" "yes"
+TIMER_TO_USE=perfctr
+else 
+ifeq "$(LIBPAPI_PRESENT)" "yes"
+TIMER_TO_USE=papi
+else
+TIMER_TO_USE=system
+endif
+endif
+
+#### Explicit timer selection ####
+EXPLICIT_TIMER_SELECTION=@timer_selected@
+ifneq "$(EXPLICIT_TIMER_SELECTION)" ""
+	ifeq "$(EXPLICIT_TIMER_SELECTION)" "perfctr"
+		ifeq "$(LIBPERFCTR_PRESENT)" "yes"
+		TIMER_TO_USE=perfctr
+		else 
+		TIMER_TO_USE=system
+		endif
+	else 
+		ifeq "$(EXPLICIT_TIMER_SELECTION)" "papi"
+			ifeq "$(LIBPAPI_PRESENT)" "yes"
+			TIMER_TO_USE=papi
+			else 
+			TIMER_TO_USE=system
+			endif
+		else
+		TIMER_TO_USE=system
+		endif
+	endif
+endif
+
+
+#### Inclusion of libraries according to default/explicit selection ####
+ifeq "$(TIMER_TO_USE)" "perfctr"
+
+LDDIRS+=$(LIBPERFCTR_LDDIRS)
+LDDIRS+=$(LIBPERFCTR_WLRPATHS)
+LDLIBS+=-lperfctr -lperfdirect
+CPPFLAGS+=-DUSE_PERFCTR=1
+
+else 
+ifeq "$(TIMER_TO_USE)" "papi"
+
+LIBPAPI_LDDIRS=-L$(LIBPAPI_DIR)/src/ -L$(LIBPAPI_DIR)/src/libpfm-3.y/lib 
+LIBPAPI_WLRPATHS=-Wl,-rpath-link,$(LIBPAPI_DIR)/src/  -Wl,-rpath-link,$(LIBPAPI_DIR)/src/libpfm-3.y/lib -Wl,-rpath,$(LIBPAPI_DIR)/src/ -Wl,-rpath,$(LIBPAPI_DIR)/src/libpfm-3.y/lib 
+LDDIRS+=$(LIBPAPI_LDDIRS) $(LIBPAPI_WLRPATHS)
+LDLIBS+=-lpapi -lpfm 
+CPPFLAGS+=-DUSE_PAPI=1
+
+else
+
+CPPFLAGS+=-DUSE_SYS_CLOCK=1
+endif
+endif
+
+
+JAVA_HOME_DIR=@java_path@
+
+
+OUTPUT_LIB_DIR=$(VEX_SUITE_ROOT)/java/lib/
+
+
+INCLUDE_MODEL_DIRS=-I$(VEX_DIR)/models
+INCLUDE_TINYXML_DIR=-I$(VEX_DIR)/models/parser -I$(VEX_DIR)/models/parser/tinyxml  
+
+INCLUDE_CINQS_DIRS=-I$(VEX_SUITE_ROOT)/src/cinqs/ -I$(VEX_SUITE_ROOT)/src/cinqs/network -I$(VEX_SUITE_ROOT)/src/cinqs/tools
+
+

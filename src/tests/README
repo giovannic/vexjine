@@ -1,0 +1,36 @@
+######## VEX CORE TESTING DIRECTORY ########
+
+The purpose of this directory is to offer a few basic test cases for the core of VEX, without any interference from bytecode instrumentation and the JVM. The tests here invoke directly the methods of libvex.so.
+
+Tests:
+
+======= perftest =======
+Basic performance tests for the fundamental method instrumentation functionalities. Note: edit the "options" file, before starting the program.
+./perftest methods vex     ### nanoseconds that VEX measures due to the invocation of the method instruments (when it should actually measure 0).
+./perftest io vex	   ### nanoseconds that VEX measures due to the invocation of the I/O method instruments (when it should actually measure 0).
+
+See also ./testOverhead for a demo usage.
+
+./perftest loops1	   ### execution of a loop with method1 in real time (normal execution). Report of test duration
+./perftest loops1 vex	   ### execution of a loop with method1 in virtual time (with VEX). Report of test duration
+
+The discrepancy between the latter two is due to the VEX instrumentation overhead which should be compensated by using the former two results.
+
+See also ./testCompensation for a demo usage.
+
+======= randomprogram =======
+Creates a random program simulating "loops" and "I/O operations" in a random order. It allows for scaling of methods in the test and threads. Note: edit the "options" file, before starting the program. 
+
+Run ./testVexCoreWithRandomProgram for details on the parameters of  ./randomprogram.
+ 
+./testVexCoreWithRandomProgram 1 400 "file=options" 1   ### use 1 thread to run tests with 200, 300 and 400 random methods using the "options" in file. 
+
+
+======= pagefault =======
+Touches various pages in memory (consumes lots of memory) to create major page faults. It is used to demonstrate that VEX does not capture page faults accurately.
+
+See also ./testPageFault for usage.
+
+
+
+

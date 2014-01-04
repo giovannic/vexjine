@@ -37,3 +37,7 @@
 *.exe
 *.out
 *.app
+
+#editor buffers
+.*.swp
+*~

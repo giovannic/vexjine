@@ -1,0 +1,59 @@
+#!/bin/bash 
+
+source testScripts/preamble
+
+
+syncapproaches=("method" "external")
+
+for i in $(seq 0 1); do
+
+threads=8
+lastres=0
+for cpus in $(seq 1 4); do
+
+java $parameters,cpus=$cpus -cp bin vtf_tests.MonitorLockingManagingTest ${syncapproaches[$i]}sync $threads &> $tempfile &
+sleep $middlesleeping
+
+if [ $cpus -gt 1 ];then
+echo -n multicoreLockingValidationTest ${syncapproaches[$i]} $cpus $threads" " 
+fi
+
+if [ `ps aux | grep MonitorLockingManagingTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep MonitorLockingManagingTest | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+
+		res=`tail -1 $tempfile`
+		if [ "$lastres" = "0" ];then
+			lastres=$res
+			success=1
+		else
+			success=`echo "$res $lastres" | awk '{err=($2 - $1)/$1; if (err > 0.1 || err < -0.1) print 0; else print 1;}'`
+			if [ $success -eq 1 ];then
+				echo "$res Success"
+			else
+				echo "$res Failure"
+			fi
+		fi
+	fi
+
+fi
+
+if [ $cpus -gt 1 -o $i -eq 1  ];then
+
+	if [ -z "$success" ];then
+		echo "java $parameters,cpus=$cpus -cp bin vtf_tests.MonitorLockingManagingTest ${syncapproaches[$i]}sync $threads"
+	fi
+	
+	unset success
+
+	echo "======================================================"
+fi
+
+done
+done
+

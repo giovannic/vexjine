@@ -1,0 +1,51 @@
+#!/bin/bash
+
+function newTestForVexParameters {
+	
+	if [ -z $2 ];then
+	threads=1
+	else
+	threads=$2
+	fi
+
+	if [ -z $3 ];then
+	threads_to=16
+	else
+	threads_to=$3
+	fi
+
+	while [ $threads -le $threads_to ];do
+
+	real=`java -cp bin vtf_tests.NativeWaitingTimeAccountingTests $threads | grep Total | awk '{print $3}'`
+
+	realstartsecs=$(date +%s.%N)
+	vex=`java -Xbootclasspath/p:/homes/nb605/VTF/java/vtf.jar -javaagent:/homes/nb605/VTF/java/lib/instrument.jar=adaptiveProfiling=10000 -agentpath:/homes/nb605/VTF/java/lib/libJVMTIAgentpapi.so=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01,$1 -cp bin vtf_tests.NativeWaitingTimeAccountingTests $threads | grep Total | awk '{print $3}'`
+	realendsecs=$(date +%s.%N)
+	realTotalSecs=`echo "scale=3; ($realendsecs - $realstartsecs) / 1.0 " |bc`
+
+	echo "$1",$threads,$real,$vex,$realTotalSecs
+
+	threads=$((threads*2))
+	done
+}
+
+echo "Single Core"
+./disable_cpu1 &> /dev/null
+newTestForVexParameters "timeslot=100"
+newTestForVexParameters "timeslot=10"
+
+
+echo "Dual Core"
+./enable_cpu1 &> /dev/null
+newTestForVexParameters "timeslot=10,cpus=2"
+newTestForVexParameters "timeslot=10,cpus=2,spex"
+
+echo "Single Core"
+./disable_cpu1 &> /dev/null
+newTestForVexParameters "timeslot=100" 32 64
+newTestForVexParameters "timeslot=10" 32 64
+
+echo "Dual Core"
+./enable_cpu1 &> /dev/null
+newTestForVexParameters "timeslot=10,cpus=2" 32 64
+newTestForVexParameters "timeslot=10,cpus=2,spex" 32 64

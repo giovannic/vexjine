@@ -1,0 +1,8 @@
+Id	Name	Invalidated	Recursive
+100	main		
+101	performanceTestMethod		
+
+
+Total profiled methods: 2
+Invalidated methods: 0 (0.000%)
+Recursive methods: 0 (0.000%)

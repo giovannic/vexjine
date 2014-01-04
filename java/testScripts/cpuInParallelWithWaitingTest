@@ -1,0 +1,24 @@
+#!/bin/bash
+
+source testScripts/preamble
+java $parameters -cp bin vtf_tests.forwardleap.GenericTest 0 1 0 0 1 0 0 0 0 0 0 0 &> $tempfile &
+
+sleep $sleepingtime
+if [ `ps aux | grep GenericTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep GenericTest | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+		echo "Success"
+		success=1
+	fi
+
+fi
+
+
+if [ -z "$success" ];then
+echo "java $parameters -cp bin vtf_tests.forwardleap.GenericTest 0 1 0 0 1 0 0 0 0 0 0 0"
+fi

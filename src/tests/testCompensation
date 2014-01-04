@@ -1,0 +1,59 @@
+#!/bin/bash
+
+iterations=100
+minusmax=12
+all_loopstests=3
+if [ -f .vex_delays ];then
+mv .vex_delays vex_delays.backup
+fi
+
+
+##### NO COMPENSATION ####
+echo "Mode,Real time,VEX time"
+it=1
+while [ $it -le $iterations ];do
+
+echo -n "No-comp"
+
+loopstest=1
+while [ $loopstest -le $all_loopstests ];do
+echo -n ,`./perftest loops$loopstest | awk '{print $1}'`,`./perftest loops$loopstest vex | awk '{print $1}'`
+loopstest=$((loopstest+1))
+done
+echo
+
+it=$((it+1))
+done
+
+echo 
+echo Generating vex_delays
+./perftest methods delay | awk '{print $1 /2}' | tr "\." "\n" | head -1 > vex_delays.new
+echo 0 >> vex_delays.new
+./perftest io delay | awk '{print $1 /2}' | tr "\." "\n" | head -1 >> vex_delays.new
+
+cat vex_delays.new
+
+minus=0
+
+while [ $minus -le $minusmax ];do
+
+it=1
+while [ $it -le $iterations ];do
+awk '{if ($1 > 0) print $1 + 6 - '$minus'; else if ($1 == 0) print $1; }' vex_delays.new > .vex_delays
+echo -n Comp-`cat .vex_delays | tr "\n" "|"`
+
+loopstest=1
+while [ $loopstest -le $all_loopstests ];do
+#echo -n ,`./perftest loops$loopstest | awk '{print $1}'`,`./perftest loops$loopstest vex | awk '{print $1}'`
+echo -n ,`./perftest loops$loopstest vex | awk '{print $1}'`
+loopstest=$((loopstest+1))
+done
+echo
+
+it=$((it+1))
+done
+
+echo
+
+minus=$((minus+1))
+done

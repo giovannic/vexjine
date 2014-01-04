@@ -1,0 +1,33 @@
+#!/bin/bash
+
+source testScripts/preamble
+
+tests=`ls testScripts/ | grep Test | grep -viE "~" | grep -viE Validation | wc -l`
+
+i=1
+echo "======================================================"
+
+while [ $i -le $tests ];do
+
+newtest=`ls testScripts/ | grep Test | grep -viE "~" | grep -viE Validation | head -$i | tail -1`
+./testScripts/$newtest $1 &> .utest_temp
+
+if [ `grep -i "Failure" -c .utest_temp` -eq 1 ];then
+echo $newtest" $1 "`cat .utest_temp | tr "\n" " "`
+echo
+echo "*** Test log ***"
+cat $tempfile
+else
+
+echo $newtest" $1 "`cat .utest_temp`
+#echo
+#echo "*** Test log ***"
+#cat $tempfile
+
+fi
+
+
+echo "======================================================"
+
+i=$((i+1))
+done

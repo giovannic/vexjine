@@ -1,0 +1,23 @@
+#!/bin/bash
+
+iterations=2
+minpages=64
+maxpages=384
+
+echo "Pages loaded,Real time,VEX time,minflt,majflt,nswap,inblock"
+
+pages=$minpages
+while [ $pages -le $maxpages ];do
+
+it=1
+while [ $it -le $iterations ];do
+
+echo $pages,`./pagefault 1 $pages | perl -lne 'print $1 if /: (.*)/' | tr "\n" ","``tail -1 results/vtf_cpi_and_cache_stats.csv | tr "," "\n" | tail -10 | head -4 | tr "\n," ","`
+
+it=$((it+1))
+done
+
+
+pages=$((pages+64))
+done
+

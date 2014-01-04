@@ -1,0 +1,119 @@
+/*
+ * LockRegistry.h
+ *
+ *  Created on: 21 Nov 2011
+ *      Author: root
+ */
+
+#ifndef LOCKREGISTRY_H_
+#define LOCKREGISTRY_H_
+
+#include "ThreadState.h"
+
+class LockRegistryInfo {
+public:
+	LockRegistryInfo() {
+		threadsContendedOnLock 	= new vector<ThreadState *>;
+		monitorLocked 	= true;
+	}
+
+	void enterMonitor() {
+		monitorLocked = true;
+	}
+
+	virtual bool releaseMonitor();
+	virtual void print();
+
+	bool isMonitorFree() {
+		return !monitorLocked;
+	}
+
+	void blockOnMonitor(ThreadState *state) {
+		threadsContendedOnLock->push_back(state);
+	}
+
+	vector<ThreadState *> *getThreadsBlockedOnMonitor() {
+		return threadsContendedOnLock;
+	}
+
+	~LockRegistryInfo() {
+		delete threadsContendedOnLock;
+	}
+
+protected:
+	vector<ThreadState *> *threadsContendedOnLock;
+	bool monitorLocked;
+};
+
+
+class ReentrantLockRegistryInfo : public LockRegistryInfo {
+public:
+
+	ReentrantLockRegistryInfo(ThreadState *state) : LockRegistryInfo() {
+		owner = state;
+		counter = 1;
+	}
+
+	void enterMonitor(ThreadState *state) {
+		monitorLocked = true;
+		owner = state;
+		++counter;
+//		cout << "+++++" << state->getName() << " counter " << counter << endl;
+	}
+
+	virtual bool releaseMonitor();
+	virtual void print();
+
+	void setNextOwner(ThreadState *state) {
+		owner = state;
+		counter = 1;
+	}
+
+	bool isCurrentOwnerThread(ThreadState *state) {
+		return state == owner;
+	}
+
+	bool isMonitorFree() {
+		return !monitorLocked;
+	}
+
+protected:
+	ThreadState *owner;
+	int counter;	// used to count times of entry in reentrant locks
+};
+
+
+
+class LockRegistry {
+public:
+	LockRegistry();
+
+	void lockRegistryMutex();
+	void unlockRegistryMutex();
+
+	void print();
+
+	virtual bool tryAcquiringLock(ThreadState *state, const int &lockId);
+	virtual ThreadState *releaseAndGetNext(const int &lockId);
+
+	~LockRegistry();
+
+protected:
+	// Registry: object ID <-> array of thread IDs (timed) waiting on that object monitor
+	pthread_mutex_t mutex;
+	//unordered_map<int, LockRegistryInfo *> *registry;
+	map<int, LockRegistryInfo *> *registry;
+};
+
+
+
+
+class ReentrantLockRegistry : public LockRegistry {
+public:
+	ReentrantLockRegistry() : LockRegistry() {};
+	virtual bool tryAcquiringLock(ThreadState *state, const int &lockId);
+	virtual ThreadState *releaseAndGetNext(const int &lockId);
+
+};
+
+#endif /* LOCKREGISTRY_H_ */

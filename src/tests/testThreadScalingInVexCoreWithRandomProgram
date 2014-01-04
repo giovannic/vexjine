@@ -1,0 +1,46 @@
+#!/bin/bash
+
+methods=300
+minthreads=64
+maxthreads=64
+maxmethods=300
+iterations=100
+
+if [ -z "$1" ];then
+options="output_dir=results,timeslot=10,scheduler_stats"
+else
+options="$1"
+fi
+
+echo Methods,Threads,Real,VEX prediction,VEX total time,Error,Overhead,Timeslices/Thread
+while [ $methods -le $maxmethods ];do
+
+onlyselected=N
+
+i=$minthreads
+while [ $i -le $maxthreads ];do
+
+iteration=1
+while [ $iteration -le $iterations ];do
+
+real=`./randomprogram $options $methods $i 100 $onlyselected yes | grep Real | tr  " " "\n" | head -1`
+./randomprogram $options $methods $i 100 $onlyselected > _vex_execution
+vex=`cat _vex_execution | grep VTF |  tr  " " "\n" | head -1`
+vex_time=`cat _vex_execution | grep Real |  tr  " " "\n" | head -1`
+total_timeslices=`cat results/vtf_schedulers_stats.csv | tr " " "\n" | tail -1`
+
+error=`echo "scale=3; 100 * ($vex-$real)/$real" | bc`
+overhead=`echo "scale=3; $vex_time/$real" | bc`
+
+timeslices_per_thread=`echo "scale=3; $total_timeslices / $i" | bc`
+echo $methods,$i,$real,$vex,$vex_time,$error,$overhead,$timeslices_per_thread	
+
+cp results/vtf_time_stats.csv threadscaling/vtf_time_stats_perthread_$methods_$i_$iteration.csv
+iteration=$((iteration+1))
+done
+
+i=$((i*2))
+done
+
+methods=$((methods + 200))
+done

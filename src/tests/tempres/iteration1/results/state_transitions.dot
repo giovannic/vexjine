@@ -1,0 +1,7 @@
+digraph state_transition_graph {
+	RUNNING -> WAITING [label="1"];
+	RUNNING -> TERMINATING [label="2"];
+	WAITING -> RUNNING [label="1"];
+	WAITING -> CUSTOM2 [label="1"];
+	REGISTERING -> RUNNING [label="2"];
+}

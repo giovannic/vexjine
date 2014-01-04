@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#THE KEYS ARE ALWAYS 'vtfkey'
+
+keytool -genkey -alias vtfkey3 
+keytool -genkey -alias vtfkey3 
+jarsigner -keystore vtfkey -storepass vtfkey -keypass vtfkey vtf_viz.jar vtfkey3

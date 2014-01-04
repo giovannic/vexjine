@@ -1,0 +1,40 @@
+#!/bin/bash 
+
+source testScripts/preamble
+
+if [ -n "$multicorevex" ];then
+./disable_cpu1 &> /dev/null
+fi
+res=`java $parameters -cp bin vtf_tests.MonitorLockingWaitTest counter 20 | tail -1`
+
+if [ -n "$multicorevex" ];then
+./enable_cpu1 &> /dev/null
+fi
+
+java $parameters -cp bin vtf_tests.MonitorLockingWaitTest counter 20 &> $tempfile &
+
+sleep $longsleeping
+
+if [ `ps aux | grep MonitorLockingWaitTest | grep -viE grep | awk '{print $2}' | wc -l` -eq 1 ];then
+	echo "Failure - Hangs"
+	kill -9 `ps aux | grep MonitorLockingWaitTest | grep -viE grep | awk '{print $2}'`
+else
+
+	if [ `cat $tempfile | grep Assertion | wc -l` -eq 1 ];then
+		echo "Failure - `cat $tempfile | grep Assertion`" 
+	else
+
+		success=`cat $tempfile | tail -1 | awk '{err=($1 - '$res')/'$res'; if (err > 0.35 || err < -0.35) print 0; else print 1;}'`
+		if [ $success -eq 1 ];then
+			echo "Success"
+		else
+			echo "Failure - rt: $res vs vt: `cat $tempfile | tail -1`"
+		fi
+	fi
+
+fi
+
+
+if [ -z "$success" ];then
+echo "java $parameters -cp bin vtf_tests.MonitorLockingWaitTest counter 20"
+fi

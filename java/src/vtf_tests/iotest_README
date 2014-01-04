@@ -1,0 +1,25 @@
+
+You need the mysql.jar
+
+
+You need the mysql server
+
+You need to install the database in iotestdb.txt (it's a dump)
+
+
+In case you need to rename the database
+
+scaramanga% mysqladmin -u root -p create tpcwdb
+Enter password: 
+scaramanga% mysql -u root -p tpcwdb < old.sql
+Enter password: 
+scaramanga% mysql -uroot -p
+Enter password: 
+
+
+
+For permissions:
+GRANT ALL PRIVILEGES ON tpcwdb.* TO nb605 @'%';
+
+or 
+GRANT ALL PRIVILEGES ON tpcwdb.* TO ALL;
