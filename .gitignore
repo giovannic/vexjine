@@ -6,6 +6,7 @@ vtf.jar
 
 # Object files
 *.o
+*.so
 
 # Libraries
 libvex.so
@@ -18,3 +19,10 @@ libvex.so
 #editor buffers
 .*.swp
 *~
+
+#vex logs
+*.log
+
+#eclipse
+.project
+.cproject

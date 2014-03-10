@@ -20,7 +20,7 @@ else
 CPPFLAGS=
 endif
 
-VEX_SUITE_ROOT=/home/giovanni/project/test/vexjine-1.0
+VEX_SUITE_ROOT=/home/giovanni/vexjine
 VEX_DIR=$(VEX_SUITE_ROOT)/src/vex
 VEX_LIBRARY_NAME=$(VEX_DIR)/libvex.so
 VEX_LIBRARY=-L$(VEX_DIR) -lvex
