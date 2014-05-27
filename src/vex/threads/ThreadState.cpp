@@ -641,7 +641,8 @@ bool VexThreadState::logMethodEntry(const int &methodId, const bool &shouldChang
 //	callinfo->setGlobalMethodDataOnEntry(registeredMethodNames[methodId]);
 	//	}
 
-	// this is the callinfo to be updated for anything that happens within that method call from the calling thread
+	// this is the callinfo to be updated
+	// for anything that happens within that method call from the calling thread
 	onVexExit();
 	return callinfo->isRecursive();
 }

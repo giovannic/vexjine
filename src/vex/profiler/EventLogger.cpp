@@ -454,6 +454,7 @@ long long EventLogger::createMeasures() {
 }
 
 void EventLogger::createMeasuresForThread(VexThreadState *state) {
+
 	unordered_map<int, PerformanceMeasure*>* threadMeasures = state->getMethodMeasures();
 
 	unordered_map<int, PerformanceMeasure*>::iterator it;

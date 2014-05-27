@@ -1,9 +1,0 @@
-Signals sent from scheduler 0 to threads asking whether they should suspend: 0
-Regular timeslot duration: 100 ms
-Timed-out timeslots of scheduler 0: 0
-Interrupted timeslots of scheduler 0 avg duration: 0 ms and stdev 0 ms: 0
-Minimum duration timeslots for scheduler 0: 0
-Allowed vfl by scheduler 0: 0 (0%)
-Forbidden vfl by scheduler 0: 0 (0%)
-Threads that asked from the scheduler 0 to yield: 0
-

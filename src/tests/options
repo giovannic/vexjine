@@ -1,7 +1,0 @@
-io=normal
-output_dir=/home/nick/Documents/Research/new/vexjine-1.0/src/tests/results/
-stack_trace_mode
-prune_percent=0.01
-profiling_HPC
-no_scheduling
-

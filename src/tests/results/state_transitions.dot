@@ -1,4 +1,0 @@
-digraph state_transition_graph {
-	RUNNING -> TERMINATING [label="1"];
-	REGISTERING -> RUNNING [label="1"];
-}

@@ -1,2 +1,0 @@
-Failure - not enough timeouts in real time
-java -Xbootclasspath/p:vtf.jar -javaagent:lib/instrument.jar=adaptiveProfiling=10000 -agentpath:lib/libJVMTIAgent.so=io=normal,output_dir=/data/,stack_trace_mode,prune_percent=0.01 -cp bin vtf_tests.forwardleap.GenericTest 0 1 0 0 0 0 0 0 1 0 0 0

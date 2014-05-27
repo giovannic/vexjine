@@ -1,5 +1,0 @@
-Starting GDB delay (to give enough time to attach gdb to process)
-Ending GDB delay (1)
-Exception in thread "main" java.lang.VerifyError: Expecting a stackmap frame at branch target 226 in method vtf_tests.forwardleap.threadtypes.RealTimeWaitingThread.acceptConnections(I)V at offset 0
-	at vtf_tests.forwardleap.GenericTest.genericTest(GenericTest.java:65)
-	at vtf_tests.forwardleap.GenericTest.main(GenericTest.java:110)

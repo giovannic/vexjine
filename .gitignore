@@ -1,3 +1,8 @@
+src/Makefile.inc
+java/*
+src/config.status
+src/tests/*
+
 *.class
 
 # Package Files
@@ -26,3 +31,7 @@ libvex.so
 #eclipse
 .project
 .cproject
+
+.settings
+
+
