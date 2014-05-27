@@ -72,8 +72,10 @@ void ThreadEventsBehaviour::onStart(const long &threadId, const char *threadName
 	}
 
 	long newThreadId = (unsigned long) syscall(SYS_gettid);
+//	long newThreadId = threadId;
 //	cout << "staring thread " << newThreadId << endl;
 	VexThreadState *state = registry->getCurrentThreadState(newThreadId);
+
 	if (state == NULL) {
 		if (!stackTraceMode) {
 			state = new VexThreadState(threadId, const_cast<char *>(threadName));
@@ -410,7 +412,8 @@ void ThreadEventsBehaviour::onJoin(const long &joiningThreadId) {
 		// We iteratively execute the method to ensure that no threads are currently being spawned
 		// otherwise this might lead to the unborn thread with id joiningThreadId to be mistaken for dead
 		while (!registry->coordinateJoiningThreads(VexThreadState::getCurrentThreadStatePtr(), joiningThreadId)) {
-			manager->suspendCurrentThread(state, startingTime, ThreadManager::SUSPEND_OPT_FORCE_SUSPEND | ThreadManager::SUSPEND_OPT_DONT_UPDATE_THREAD_TIME);
+//			manager->suspendCurrentThread(state, startingTime, ThreadManager::SUSPEND_OPT_FORCE_SUSPEND | ThreadManager::SUSPEND_OPT_DONT_UPDATE_THREAD_TIME);
+			manager->onThreadYield(state, startingTime);
 			manager = getCurrentlyControllingManagerOf(state); // state thread calls thread.join() with thread = thread with joiningThreadId
 		}
 
@@ -599,6 +602,7 @@ void ThreadEventsBehaviour::afterCreatingThread() {
 		LOG_LAST_VEX_METHOD(state)
 		state->onVexExitWithCpuTimeUpdate();
 	}
+
 }
 
 
@@ -639,8 +643,6 @@ void ThreadEventsBehaviour::onBackgroundLoadExecutionEndAt(const long long &exec
 
 
 void ThreadEventsBehaviour::onEnd() {
-
-
 
 	VexThreadState *state = VexThreadState::getCurrentThreadState();
 	if (state != NULL) {

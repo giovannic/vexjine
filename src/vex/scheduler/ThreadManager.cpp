@@ -384,14 +384,14 @@ void ThreadManager::onThreadSpawn(VexThreadState *state) {
 
 	threadRegistry->add(state);			// Populate the index data structure for this Thread state - scheduler still unaware of this thread
 	
-//	cout << "********added new state of thread " << state->getName() << "  (" << state->getId() << ") at " << state->getEstimatedRealTime()/1e6 << " to virtual core " << managerId <<  endl;
+	//cout << "********added new state of thread " << state->getName() << "  (" << state->getId() << ") at " << state->getEstimatedRealTime()/1e6 << " to virtual core " << managerId <<  endl;
 	state->setThreadCurrentlyControllingManager(this);
 
 	// Always wake-up scheduler - what if the running thread gets into a while(condition==true) loop (with the condition becoming false by the other threads)
 	state->lockShareResourceAccessKey();
 	suspendCurrentThread(state, 0, SUSPEND_OPT_DONT_UPDATE_THREAD_TIME);
 
-//	cout << "********thread " << state->getName() << "  (" << state->getId() << ") started really executing at " << state->getEstimatedRealTime()/1e6 << " to virtual core " << managerId <<  endl;
+	//cout << "********thread " << state->getName() << "  (" << state->getId() << ") started really executing at " << state->getEstimatedRealTime()/1e6 << " to virtual core " << managerId <<  endl;
 //	threadRegistry->newThreadStarted();		// update counter used to denote live registering threads, to stop leaps forward in virtual time, if live threads exist
 
 	state->onVexExitWithCpuTimeUpdate();
@@ -561,8 +561,10 @@ void ThreadManager::onWrappedBackgroundLoadExecutionEnd(const long long &executi
  */
 bool ThreadManager::shouldCurrentThreadSuspend(VexThreadState *state) {
 	if (state != NULL) {
-		ThreadManager *manager;
-		if (state->getAndResetForcedSuspendFlag() || (manager = state->getThreadCurrentlyControllingManager()) == NULL || manager->anotherThreadAlreadySetRunning(state)) {
+		ThreadManager *manager; // = state->getThreadCurrentlyControllingManager();
+		if (state->getAndResetForcedSuspendFlag() ||
+			((manager = state->getThreadCurrentlyControllingManager()) == NULL ||
+			manager->anotherThreadAlreadySetRunning(state))) {
 			return true;
 		} else {
 			if (!state->isSuspendingAllowed()) {	// used to avoid interrupting a thread while holding an malloc-related kernel lock
@@ -578,6 +580,7 @@ bool ThreadManager::shouldCurrentThreadSuspend(VexThreadState *state) {
 
 			//WORKING VERSION if (nextRunnable != NULL && (state->getEstimatedRealTime() > nextRunnable->estimatedRealTime)) {// (state->getEstimatedRealTime() - nextRunnable->estimatedRealTime) > schedulerTimeslot) {
 			if (runnableThreads->isNextRunnableThreadBefore(state->getEstimatedRealTime())) {
+				cout << "here" << endl;
 				return true;
 			} else {
 				LOG(logger, logDEBUG4) << "Manager " << managerId << " thread \""<< state->getName() << "\" should NOT be suspended because is before nextThread" << endl;
@@ -948,7 +951,9 @@ void ThreadManager::suspendCurrentThread(VexThreadState *state, const long long 
 	}
 
 	// Suspend only if you are forced to (but if at least one runnable or thread under creation exist) or there exists another thread whose VT < your updated(VT)
-	if (((options & SUSPEND_OPT_FORCE_SUSPEND) && (!runnableThreads->empty() || threadRegistry->atLeastOneThreadBeingSpawned())) || shouldCurrentThreadSuspend(state)) {
+	if (((options & SUSPEND_OPT_FORCE_SUSPEND) &&
+			(!runnableThreads->empty() || threadRegistry->atLeastOneThreadBeingSpawned()))
+			|| shouldCurrentThreadSuspend(state)) {
 
 		if (options & SUSPEND_OPT_THREAD_ALREADY_IN_LIST) {
 			unsetCurrentThreadFromRunningThread(state);
