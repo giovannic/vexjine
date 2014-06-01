@@ -140,6 +140,45 @@ bool ThreadEventsBehaviour::beforeReleasingLockOfAnyReplacedWaiting(const long &
 	}
 }
 
+bool ThreadEventsBehaviour::beforeReleasingLockOfAnyReplacedWaiting(const long &cond, const long &mutex, const bool &updateLockRegistry) {
+	VexThreadState *state = VexThreadState::getCurrentThreadState();
+	if (state != NULL) {
+		state->onVexEntry();
+
+		waitingOnObjectRegistry->insert(cond, state->getUniqueId());
+
+		if (updateLockRegistry) {
+			onLocklessReleasingLock(state, mutex);
+		}
+
+		state->onVexExitWithoutTimeUpdate();
+		return true;
+	} else {
+		return false;
+	}
+}
+// This method should be called when a timed-waiting-type method is replaced by a virtual-time wait within VEX.
+bool ThreadEventsBehaviour::onReplacedTimedWaiting(const long &cond, const long &mutex, const long &timeout, const int &nanoTimeout, const bool &updateLockRegistry) {
+	VexThreadState *state = VexThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
+
+	if (state != NULL) {
+
+		long correctTimeout = ensureTimeoutIsLessThanMax(timeout, nanoTimeout);
+		bool hasReplacedTimedWaitingTimedOut = state->onReplacedTimedWaiting(cond, correctTimeout);
+
+		if (updateLockRegistry) {
+			onLocklessRequestingLock(state, mutex);
+		}
+
+		LOG_LAST_VEX_METHOD(state)
+		state->onVexExitWithCpuTimeUpdate();
+
+		return hasReplacedTimedWaitingTimedOut;
+	} else {
+		return false;
+	}
+}
+
 // This method should be called when a timed-waiting-type method is replaced by a virtual-time wait within VEX.
 bool ThreadEventsBehaviour::onReplacedTimedWaiting(const long &objectId, const long &timeout, const int &nanoTimeout, const bool &updateLockRegistry) {
 	VexThreadState *state = VexThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
@@ -162,6 +201,25 @@ bool ThreadEventsBehaviour::onReplacedTimedWaiting(const long &objectId, const l
 	}
 }
 
+bool ThreadEventsBehaviour::onReplacedWaiting(const long &cond, const long &mutex, const bool &updateLockRegistry) {
+	VexThreadState *state = VexThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);
+
+	if (state != NULL) {
+
+		bool hasReplacedTimedWaitingTimedOut = state->onReplacedWaiting(cond, updateLockRegistry);
+
+		if (updateLockRegistry) {
+			onLocklessRequestingLock(state, mutex);	// try to re-acquire the lock after waiting
+		}
+
+		LOG_LAST_VEX_METHOD(state)
+		state->onVexExitWithCpuTimeUpdate();
+
+		return hasReplacedTimedWaitingTimedOut;
+	} else {
+		return false;
+	}
+}
 
 bool ThreadEventsBehaviour::onReplacedWaiting(const long &objectId, const bool &updateLockRegistry) {
 	VexThreadState *state = VexThreadState::getCurrentThreadState();//registry->getCurrentThreadState(threadId);

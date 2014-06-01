@@ -44,8 +44,11 @@ public:
 	void onWrappedTimedWaitingInterrupt(const long &objectId);
 
 	bool beforeReleasingLockOfAnyReplacedWaiting(const long &objectId, const bool &updateLockRegistry);		// invoke this before releasing the lock of the waiting call to be replaced
+	bool beforeReleasingLockOfAnyReplacedWaiting(const long &cond, const long &mutex, const bool &updateLockRegistry);
 	bool onReplacedWaiting(const long &objectId, const bool &updateLockRegistry);
+	bool onReplacedWaiting(const long &cond, const long &mutex, const bool &updateLockRegistry);
 	bool onReplacedTimedWaiting(const long &objectId, const long &timeout, const int &nanoTimeout, const bool &updateLockRegistry);
+	bool onReplacedTimedWaiting(const long &cond, const long &mutex, const long &timeout, const int &nanoTimeout, const bool &updateLockRegistry);
 
 	bool onSignallingOnObject(const long &objectId);
 	bool onBroadcastingOnObject(const long &objectId);
