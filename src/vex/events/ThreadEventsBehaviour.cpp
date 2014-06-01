@@ -403,16 +403,23 @@ void ThreadEventsBehaviour::onJoin(const long &joiningThreadId) {
 	VexThreadState *state = VexThreadState::getCurrentThreadState();
 
 	if (state != NULL) {
-		long long startingTime = state->getTimeOnVexEntry();
+		long long startingTime = state->getTimeOnVexEntry(); //locks the registry
 
 		ThreadManager *manager = getCurrentlyControllingManagerOf(state);
 		manager->setCurrentThreadVT(startingTime, state);
+
+		//Gio - For some reason the registry is locked here
+		//not the lock that's causing the issue
+//		state->unlockShareResourceAccessKey();
 
 		// The point here is to coordinate with any joining threads
 		// We iteratively execute the method to ensure that no threads are currently being spawned
 		// otherwise this might lead to the unborn thread with id joiningThreadId to be mistaken for dead
 		while (!registry->coordinateJoiningThreads(VexThreadState::getCurrentThreadStatePtr(), joiningThreadId)) {
-//			manager->suspendCurrentThread(state, startingTime, ThreadManager::SUSPEND_OPT_FORCE_SUSPEND | ThreadManager::SUSPEND_OPT_DONT_UPDATE_THREAD_TIME);
+//			manager->suspendCurrentThread(state, startingTime,
+//					ThreadManager::SUSPEND_OPT_FORCE_SUSPEND |
+//					ThreadManager::SUSPEND_OPT_DONT_UPDATE_THREAD_TIME); //| ThreadManager::SUSPEND_OPT_THREAD_ALREADY_IN_LIST );
+			//Gio - do not add me to the list, let the exiting thread wake me up
 			manager->onThreadYield(state, startingTime);
 			manager = getCurrentlyControllingManagerOf(state); // state thread calls thread.join() with thread = thread with joiningThreadId
 		}

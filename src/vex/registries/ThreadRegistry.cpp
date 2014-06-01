@@ -622,6 +622,7 @@ bool ThreadRegistry::coordinateJoiningThreads(VexThreadState **state, const long
 		if (!otherThread->isDead()) {
 			otherThread->setParentThreadWaitingYouToJoin(state);
 			//and send me to sleep - Gio
+			unlockRegistry();
 			return false;
 		} else {
 			(*state)->setAwakeningFromJoin(true);
