@@ -244,7 +244,8 @@ bool ThreadRegistry::existsThreadThatIsSuspendedOnHigherErtThanTimeoutAndMightUn
 	while (i != threadStateIndex.end()) {
 
 		tempState = (*i).second;
-		if (tempState != NULL && tempState->isSuspended() && tempState->getEstimatedRealTime() >= state->getEstimatedRealTime()) {
+		//Gio: allow for timed waiting thread as well
+		if (tempState != NULL && (tempState->isTimedWaiting() || tempState->isSuspended()) && tempState->getEstimatedRealTime() >= state->getEstimatedRealTime()) {
 			return true;
 		}
 		++i;
@@ -259,7 +260,7 @@ bool ThreadRegistry::areAllNativeWaitingThreadsBlockedAccordingToSystemState(Vex
 		VexThreadState *tempState;
 		while (i != threadStateIndex.end()) {
 			tempState = (*i).second;
-			if (tempState != NULL && tempState->getEstimatedRealTime() < state->getEstimatedRealTime() && (tempState->isNativeWaiting() || tempState->isInAnyIo())) {
+			if (tempState != NULL && tempState->getEstimatedRealTime() <= state->getEstimatedRealTime() && (tempState->isNativeWaiting() || tempState->isInAnyIo())) {
 				if (!tempState->isThreadSystemStateBlocked()) {
 					unlockRegistry();
 					return false;
@@ -622,8 +623,8 @@ bool ThreadRegistry::coordinateJoiningThreads(VexThreadState **state, const long
 		if (!otherThread->isDead()) {
 			otherThread->setParentThreadWaitingYouToJoin(state);
 			//and send me to sleep - Gio
-			unlockRegistry();
-			return false;
+//			unlockRegistry();
+//			return false;
 		} else {
 			(*state)->setAwakeningFromJoin(true);
 		}

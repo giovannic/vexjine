@@ -580,7 +580,6 @@ bool ThreadManager::shouldCurrentThreadSuspend(VexThreadState *state) {
 
 			//WORKING VERSION if (nextRunnable != NULL && (state->getEstimatedRealTime() > nextRunnable->estimatedRealTime)) {// (state->getEstimatedRealTime() - nextRunnable->estimatedRealTime) > schedulerTimeslot) {
 			if (runnableThreads->isNextRunnableThreadBefore(state->getEstimatedRealTime())) {
-				cout << "here" << endl;
 				return true;
 			} else {
 				LOG(logger, logDEBUG4) << "Manager " << managerId << " thread \""<< state->getName() << "\" should NOT be suspended because is before nextThread" << endl;
