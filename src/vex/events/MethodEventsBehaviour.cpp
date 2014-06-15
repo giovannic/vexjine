@@ -57,7 +57,10 @@ bool MethodEventsBehaviour::beforeMethodExit(const int & methodId) {
 	PerformanceMeasure *methodLog = state->onVexMethodExit(methodId);
 	//	VISUALIZE_METHOD_EVENT(METHOD_EXIT, state, methodId);
 
-	bool shouldMethodBeInvalidated = (invalidationPolicy != NULL && !invalidationPolicy->keepOnProfiling(methodLog));
+	bool shouldMethodBeInvalidated = false;
+	if(methodLog != NULL){
+		shouldMethodBeInvalidated = (invalidationPolicy != NULL && !invalidationPolicy->keepOnProfiling(methodLog));
+	}
 	state->onVexExit();
 
 	LOG_LAST_VEX_METHOD(state)

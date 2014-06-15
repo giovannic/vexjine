@@ -19,7 +19,7 @@ ProfilingInvalidationPolicy::~ProfilingInvalidationPolicy() {
 bool ProfilingInvalidationPolicy::keepOnProfiling(PerformanceMeasure *pm) {
 
 	if (pm != NULL && pm->getMethodInvocations() > samplesLimit && !pm->isTheInstrumentationProfilingMethod()) {
-		//fprintf(stderr, "Invalidating method %d\n", pm->getMethodId());fflush(stderr);
+//		fprintf(stderr, "Invalidating method %d\n", pm->getMethodId());fflush(stderr);
 		return false;
 	}
 	return true;
@@ -78,7 +78,7 @@ bool AbsoluteTimeProfilingInvalidationPolicy::keepOnProfiling(PerformanceMeasure
 	unsigned int ratio = samples / samplesLimit;		// will be rounded to 0 for less thatn samplesLimit
 	if (pm != NULL && ratio > 0 && !pm->isTheInstrumentationProfilingMethod()) {
 
-		//cout << pm->getMethodId() << " " << fixed << setprecision(9) << pm->getEstimatedRealTimeIncludingCalleeMethods() << " " << " " << (ratio * minimumAcceptableTime) << endl;
+//		cout << pm->getMethodId() << " " << fixed << setprecision(9) << pm->getEstimatedRealTimeIncludingCalleeMethods() << " " << ratio << " " << (ratio * minimumAcceptableTime) << endl;
 		if (pm->getEstimatedRealTimeIncludingCalleeMethods() < ratio * minimumAcceptableTime) {
 			//fprintf(stderr, "Invalidating method %d\n", pm->getMethodId());fflush(stderr);
 			return false;
