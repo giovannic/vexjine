@@ -239,7 +239,7 @@ public:
 	bool isDefinitelyActive() {
 		 //																	The isRunning is necessary for multicore synchronization of VLFs
 		return isDefinitelyActiveInIo() || isRegistering() || isSuspended() || isRunning() || wasAwaken() ||
-			  isAwakeningAfterJoin() || isSomewhereInVex();// || (isNativeWaiting()); // && getWaitingInNativeVTFcode() != 0);
+			  /*isAwakeningAfterJoin() ||*/ isSomewhereInVex();// || (isNativeWaiting()); // && getWaitingInNativeVTFcode() != 0);
 	}
 
 	bool isSomewhereInVex();

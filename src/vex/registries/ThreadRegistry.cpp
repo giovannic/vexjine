@@ -313,6 +313,10 @@ short ThreadRegistry::areAnyOtherThreadsActiveInFormerTime(VexThreadState *state
 //		bool otherThreadsActiveInFormerTime = false;
 //		bool maybeOneAlive = false;
 
+//		unordered_map<long, VexThreadState*>::iterator i = threadStateIndex.begin();
+//		VexThreadState *tempState;
+//		while (i != threadStateIndex.end()) {
+
 		unordered_map<long, VexThreadState*>::iterator i = threadStateIndex.begin();
 		VexThreadState *tempState;
 		while (i != threadStateIndex.end()) {
@@ -622,6 +626,7 @@ bool ThreadRegistry::coordinateJoiningThreads(VexThreadState **state, const long
 		VexThreadState *otherThread = stateIt->second;
 		if (!otherThread->isDead()) {
 			otherThread->setParentThreadWaitingYouToJoin(state);
+//			(*state)->setAwakeningFromJoin(false);
 			//and send me to sleep - Gio
 //			unlockRegistry();
 //			return false;
